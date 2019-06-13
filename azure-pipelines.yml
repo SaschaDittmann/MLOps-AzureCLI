@@ -1,0 +1,62 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+variables:
+    azureml.resourceGroup: mlops-demo
+    azureml.workspaceName: mlops-mlwrksp
+    azureml.location: westeurope
+    amlcompute.clusterName: aml-compute
+    amlcompute.vmSize: Standard_NC6
+    amlcompute.minNodes: 0
+    amlcompute.maxNodes: 4
+    amlcompute.idleSecondsBeforeScaledown: 300
+    experiment.name: devops-ai-demo
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UsePythonVersion@0
+  displayName: 'Use Python 3.6'
+  inputs:
+    versionSpec: '3.6'
+    addToPath: true
+    architecture: 'x64'
+- task: Bash@3
+  displayName: 'Install Python Requirements'
+  inputs:
+    targetType: filePath
+    filePath: 'setup/install_requirements.sh'
+    workingDirectory: 'setup'
+- script: 'pytest tests/unit/data_test.py'
+  displayName: 'Data Quality Check'
+- task: AzureCLI@1
+  displayName: 'Add AzureML CLI Extension'
+  inputs:
+    azureSubscription: 'MyAzureSubscription'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az extension add -n azure-cli-ml'
+- task: AzureCLI@1
+  displayName: 'Create Azure ML Service Workspace'
+  inputs:
+    azureSubscription: 'MyAzureSubscription'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az ml workspace create -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -l $(azureml.location) --exist-ok --yes'
+- task: AzureCLI@1
+  displayName: 'Create Azure ML Compute'
+  inputs:
+    azureSubscription: 'MyAzureSubscription'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az ml computetarget create amlcompute -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(amlcompute.clusterName) -s $(amlcompute.vmSize) --min-nodes $(amlcompute.minNodes) --max-nodes $(amlcompute.maxNodes) --idle-seconds-before-scaledown $(amlcompute.idleSecondsBeforeScaledown)'
+- task: AzureCLI@1
+  displayName: 'Train, Evaluate & Register Model'
+  inputs:
+    azureSubscription: 'MyAzureSubscription'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml train_diabetes.py'
+    workingDirectory: 'src'
