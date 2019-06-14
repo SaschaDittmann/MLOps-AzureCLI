@@ -65,7 +65,7 @@ steps:
     azureSubscription: 'MyAzureSubscription'
     scriptLocation: 'inlineScript'
     inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml -t ../metadata/run.json train_diabetes.py'
-    workingDirectory: 'src'
+    workingDirectory: 'training'
 - task: AzureCLI@1
   displayName: 'Register Model'
   inputs:
@@ -79,15 +79,13 @@ steps:
     scriptLocation: 'inlineScript'
     inlineScript: 'az ml model download -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -i $(jq -r .modelId metadata/model.json) -t ./models --overwrite'    
 - task: CopyFiles@2
-  displayName: 'Copy metadata to Artifact Staging Directory'
+  displayName: 'Copy files to Artifact Staging Directory'
   inputs:
-    contents: 'metadata\**'
-    targetFolder: $(Build.ArtifactStagingDirectory)
-- task: CopyFiles@2
-  displayName: 'Copy models to Artifact Staging Directory'
-  inputs:
-    contents: 'models\**'
-    targetFolder: $(Build.ArtifactStagingDirectory)
+    SourceFolder: '$(Build.SourcesDirectory)'
+    Contents: |
+     **/metadata/*
+     **/models/*
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
 - task: Bash@3
   displayName: 'Display Artifact Staging Directory'
   inputs:
