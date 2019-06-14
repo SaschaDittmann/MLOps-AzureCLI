@@ -11,11 +11,12 @@ variables:
     azureml.workspaceName: mlops-mlwrksp
     azureml.location: westeurope
     amlcompute.clusterName: aml-compute
-    amlcompute.vmSize: Standard_NC6
+    amlcompute.vmSize: STANDARD_DS2_V2
     amlcompute.minNodes: 0
-    amlcompute.maxNodes: 4
+    amlcompute.maxNodes: 2
     amlcompute.idleSecondsBeforeScaledown: 300
-    experiment.name: devops-ai-demo
+    experiment.name: diabetes_sklearn
+    model.name: diabetes_model
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -53,10 +54,48 @@ steps:
     azureSubscription: 'MyAzureSubscription'
     scriptLocation: 'inlineScript'
     inlineScript: 'az ml computetarget create amlcompute -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(amlcompute.clusterName) -s $(amlcompute.vmSize) --min-nodes $(amlcompute.minNodes) --max-nodes $(amlcompute.maxNodes) --idle-seconds-before-scaledown $(amlcompute.idleSecondsBeforeScaledown)'
+- task: Bash@3
+  displayName: 'Create Metadata and Models Folder'
+  inputs:
+    targetType: 'inline'
+    script: 'mkdir metadata && mkdir models'
 - task: AzureCLI@1
-  displayName: 'Train, Evaluate & Register Model'
+  displayName: 'Train Model'
   inputs:
     azureSubscription: 'MyAzureSubscription'
     scriptLocation: 'inlineScript'
-    inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml train_diabetes.py'
+    inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml -t ../metadata/run.json train_diabetes.py'
     workingDirectory: 'src'
+- task: AzureCLI@1
+  displayName: 'Register Model'
+  inputs:
+    azureSubscription: 'MyAzureSubscription'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az ml model register -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(model.name) -f metadata/run.json  --asset-path outputs/models/sklearn_diabetes_model.pkl -d "Linear model using diabetes dataset" --tag "data"="diabetes" --tag "model"="regression" --model-framework ScikitLearn -t metadata/model.json'    
+- task: AzureCLI@1
+  displayName: 'Download Model'
+  inputs:
+    azureSubscription: 'MyAzureSubscription'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az ml model download -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -i $(jq -r .modelId metadata/model.json) -t ./models --overwrite'    
+- task: CopyFiles@2
+  displayName: 'Copy metadata to Artifact Staging Directory'
+  inputs:
+    contents: 'metadata\**'
+    targetFolder: $(Build.ArtifactStagingDirectory)
+- task: CopyFiles@2
+  displayName: 'Copy models to Artifact Staging Directory'
+  inputs:
+    contents: 'models\**'
+    targetFolder: $(Build.ArtifactStagingDirectory)
+- task: Bash@3
+  displayName: 'Display Artifact Staging Directory'
+  inputs:
+    targetType: 'inline'
+    script: 'pwd && ls -laR $(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+  inputs:
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'

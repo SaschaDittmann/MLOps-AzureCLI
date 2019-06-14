@@ -15,8 +15,6 @@ from azureml.core.run import Run
 from azureml.core.model import Model
 
 run = Run.get_context()
-exp = run.experiment
-ws = run.experiment.workspace
 
 outputs_folder = './model'
 os.makedirs(outputs_folder, exist_ok=True)
@@ -41,8 +39,7 @@ run.log("mse", mean_squared_error(preds, data["test"]["y"]))
 
 # Save model as part of the run history
 print("Exporting the model as pickle file...")
-model_name = "sklearn_regression_model"
-model_filename = "sklearn_regression_model.pkl"
+model_filename = "sklearn_diabetes_model.pkl"
 model_path = os.path.join(outputs_folder, model_filename)
 
 with open(model_path, "wb") as file:
@@ -50,54 +47,11 @@ with open(model_path, "wb") as file:
 
 # upload the model file explicitly into artifacts
 print("Uploading the model into run artifacts...")
-run.upload_file(name="./outputs/" + model_filename, path_or_stream=model_path)
+run.upload_file(name="./outputs/models/" + model_filename, path_or_stream=model_path)
 print("Uploaded the model {} to experiment {}".format(model_filename, run.experiment.name))
 dirpath = os.getcwd()
 print(dirpath)
 print("Following files are uploaded ")
 print(run.get_file_names())
-
-try:
-    # Get most recently registered model, we assume that is the model in production. Download this model and compare it with the recently trained model by running test with same data set.
-    model_list = Model.list(ws)
-    production_model = next(
-        filter(
-            lambda x: x.created_time == max(model.created_time for model in model_list),
-            model_list,
-        )
-    )
-    production_model_run_id = production_model.tags.get("run_id")
-    run_list = exp.get_runs()
-
-    # Get the run history for both production model and newly trained model and compare mse
-    production_model_run = Run(exp, run_id=production_model_run_id)
-
-    production_model_mse = production_model_run.get_metrics().get("mse")
-    new_model_mse = run.get_metrics().get("mse")
-    print(
-        "Current Production model mse: {}, New trained model mse: {}".format(
-            production_model_mse, new_model_mse
-        )
-    )
-
-    promote_new_model = False
-    if new_model_mse < production_model_mse:
-        promote_new_model = True
-        print("New trained model performs better, thus it will be registered")
-except:
-    promote_new_model = True
-    print("This is the first model to be trained, thus nothing to evaluate for now")
-
-# register the model
-if promote_new_model:
-    print('Registering the model...')
-    model = Model.register(
-        model_path=model_path,
-        model_name=model_name,
-        id=run.id,
-        tags={"data": "diabetes", "model": "regression", "run_id": run.id},
-        description="Linear model using diabetes dataset",
-        workspace=ws
-    )
 
 run.complete()
