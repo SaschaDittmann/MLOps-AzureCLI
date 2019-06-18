@@ -215,7 +215,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     # creates an environment if it doesn’t exist
-    environment: 'diabetes-staging'
+    environment: 'diabetes-production'
     strategy:
       # default deployment strategy
       runOnce:
