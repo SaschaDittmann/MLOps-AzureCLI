@@ -1,26 +1,36 @@
 import pickle
 import os
-import argparse
+import numpy as np
+import pandas as pd
+import json
+import subprocess
+
 from sklearn.datasets import load_diabetes
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-from sklearn.externals import joblib
-import numpy as np
-import json
-import subprocess
+from joblib import dump
 from typing import Tuple, List
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from azureml.core.run import Run
 from azureml.core.model import Model
 
 run = Run.get_context()
 
-outputs_folder = './model'
-os.makedirs(outputs_folder, exist_ok=True)
-
 print("Loading training data...")
 # https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html
+#diabetes = pd.read_csv('../data/diabetes.csv')
+#diabetes.columns 
+
+#print("First few rows of the Diabetes data set:") 
+#diabetes.head()
+
+#print("Diabetes data set dimensions : {}".format(diabetes.shape))
+#diabetes.groupby('Outcome').size()
+
 X, y = load_diabetes(return_X_y=True)
 columns = ["age", "gender", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
@@ -31,19 +41,22 @@ print("Training the model...")
 alphas = np.arange(0.0, 1.0, 0.05)
 alpha = alphas[np.random.choice(alphas.shape[0], 1, replace=False)][0]
 print(alpha)
-run.log("alpha", alpha)
+run.log("alpha: ", alpha)
 reg = Ridge(alpha=alpha)
 reg.fit(data["train"]["X"], data["train"]["y"])
+
+print("Evaluate the model...")
 preds = reg.predict(data["test"]["X"])
 run.log("mse", mean_squared_error(preds, data["test"]["y"]))
 
 # Save model as part of the run history
 print("Exporting the model as pickle file...")
+outputs_folder = './model'
+os.makedirs(outputs_folder, exist_ok=True)
+
 model_filename = "sklearn_diabetes_model.pkl"
 model_path = os.path.join(outputs_folder, model_filename)
-
-with open(model_path, "wb") as file:
-    joblib.dump(value=reg, filename=model_filename)
+dump(reg, model_path)
 
 # upload the model file explicitly into artifacts
 print("Uploading the model into run artifacts...")
