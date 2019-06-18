@@ -18,6 +18,9 @@ variables:
   experiment.name: diabetes_sklearn
   model.name: diabetes_model
   service.name.staging: diabetes-service-aci
+  aks.clusterName: aks
+  aks.vmSize: Standard_B4ms
+  aks.agentCount: 3
   service.name.production: diabetes-service-aks
 
 stages:
@@ -118,13 +121,13 @@ stages:
         publishLocation: 'Container'
         PathtoPublish: '$(Build.ArtifactStagingDirectory)'
 - stage: Staging
-  displayName: Staging
+  displayName: 'Deploy to Staging'
   dependsOn: Build
   condition: succeeded()
   jobs:
     # track deployments on the environment
   - deployment: DeployToACI
-    displayName: 'Deploy to ACI'
+    displayName: 'Deploy to Azure Container Instance'
     pool:
       vmImage: 'ubuntu-latest'
     # creates an environment if it doesn’t exist
@@ -159,4 +162,95 @@ stages:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
               inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) -f ../metadata/model.json --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite'
+              workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
+- stage: Test
+  displayName: Test
+  dependsOn: Staging
+  condition: succeeded()
+  jobs:
+  - job: IntegrationTests
+    displayName: 'Run Integration Tests'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.6'
+      inputs:
+        versionSpec: '3.6'
+        addToPath: true
+        architecture: 'x64'
+    - task: Bash@3
+      displayName: 'Install Python Requirements'
+      inputs:
+        targetType: filePath
+        filePath: 'setup/install_requirements.sh'
+        workingDirectory: 'setup'
+    - task: AzureCLI@1
+      displayName: 'Add AzureML CLI Extension'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az extension add -n azure-cli-ml'
+    - task: AzureCLI@1
+      displayName: 'Run Integration Tests'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'pytest integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html --scoreurl $(az ml service show -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) --query scoringUri -o tsv)'
+        workingDirectory: 'tests/integration'
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFiles: '**/test-*.xml'
+        testRunTitle: 'Publish Integration Tests results'
+- stage: Production
+  displayName: 'Deploy to Production'
+  dependsOn: Test
+  condition: succeeded()
+  jobs:
+    # track deployments on the environment
+  - deployment: DeployToAKS
+    displayName: 'Deploy to Azure Kubernetes Service'
+    pool:
+      vmImage: 'ubuntu-latest'
+    # creates an environment if it doesn’t exist
+    environment: 'diabetes-production'
+    strategy:
+      # default deployment strategy
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact: drop'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.ArtifactsDirectory)' 
+          - task: UsePythonVersion@0
+            displayName: 'Use Python 3.6'
+            inputs:
+              versionSpec: '3.6'
+              addToPath: true
+              architecture: 'x64'
+          - task: AzureCLI@1
+            displayName: 'Add AzureML CLI Extension'
+            inputs:
+              azureSubscription: 'MyAzureSubscription'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'az extension add -n azure-cli-ml'
+          - task: AzureCLI@1
+            displayName: 'Create Azure Kubernetes Service'
+            inputs:
+              azureSubscription: 'MyAzureSubscription'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'az ml computetarget create aks -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(aks.clusterName) -s $(aks.vmSize) -a $(aks.agentCount)'
+              workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
+          - task: AzureCLI@1
+            displayName: 'Deploy to ML Service to AKS'
+            inputs:
+              azureSubscription: 'MyAzureSubscription'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.production) -f ../metadata/model.json --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $(aks.clusterName) --overwrite'
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
