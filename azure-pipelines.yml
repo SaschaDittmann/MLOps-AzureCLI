@@ -86,7 +86,7 @@ stages:
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
-        inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml -t ../metadata/run.json train_diabetes.py'
+        inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml -c train_diabetes -t ../metadata/run.json train_diabetes.py'
         workingDirectory: 'training'
     - task: AzureCLI@1
       displayName: 'Register Model'
