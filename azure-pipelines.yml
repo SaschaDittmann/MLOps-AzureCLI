@@ -7,93 +7,156 @@ trigger:
 - master
 
 variables:
-    azureml.resourceGroup: mlops-demo
-    azureml.workspaceName: mlops-mlwrksp
-    azureml.location: westeurope
-    amlcompute.clusterName: aml-compute
-    amlcompute.vmSize: STANDARD_DS2_V2
-    amlcompute.minNodes: 0
-    amlcompute.maxNodes: 2
-    amlcompute.idleSecondsBeforeScaledown: 300
-    experiment.name: diabetes_sklearn
-    model.name: diabetes_model
+  azureml.resourceGroup: mlops-demo
+  azureml.workspaceName: mlops-mlwrksp
+  azureml.location: westeurope
+  amlcompute.clusterName: aml-compute
+  amlcompute.vmSize: STANDARD_DS2_V2
+  amlcompute.minNodes: 0
+  amlcompute.maxNodes: 2
+  amlcompute.idleSecondsBeforeScaledown: 300
+  experiment.name: diabetes_sklearn
+  model.name: diabetes_model
+  service.name.staging: diabetes-service-aci
+  service.name.production: diabetes-service-aks
 
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-- task: UsePythonVersion@0
-  displayName: 'Use Python 3.6'
-  inputs:
-    versionSpec: '3.6'
-    addToPath: true
-    architecture: 'x64'
-- task: Bash@3
-  displayName: 'Install Python Requirements'
-  inputs:
-    targetType: filePath
-    filePath: 'setup/install_requirements.sh'
-    workingDirectory: 'setup'
-- script: 'pytest tests/unit/data_test.py'
-  displayName: 'Data Quality Check'
-- task: AzureCLI@1
-  displayName: 'Add AzureML CLI Extension'
-  inputs:
-    azureSubscription: 'MyAzureSubscription'
-    scriptLocation: 'inlineScript'
-    inlineScript: 'az extension add -n azure-cli-ml'
-- task: AzureCLI@1
-  displayName: 'Create Azure ML Service Workspace'
-  inputs:
-    azureSubscription: 'MyAzureSubscription'
-    scriptLocation: 'inlineScript'
-    inlineScript: 'az ml workspace create -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -l $(azureml.location) --exist-ok --yes'
-- task: AzureCLI@1
-  displayName: 'Create Azure ML Compute'
-  inputs:
-    azureSubscription: 'MyAzureSubscription'
-    scriptLocation: 'inlineScript'
-    inlineScript: 'az ml computetarget create amlcompute -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(amlcompute.clusterName) -s $(amlcompute.vmSize) --min-nodes $(amlcompute.minNodes) --max-nodes $(amlcompute.maxNodes) --idle-seconds-before-scaledown $(amlcompute.idleSecondsBeforeScaledown)'
-- task: Bash@3
-  displayName: 'Create Metadata and Models Folder'
-  inputs:
-    targetType: 'inline'
-    script: 'mkdir metadata && mkdir models'
-- task: AzureCLI@1
-  displayName: 'Train Model'
-  inputs:
-    azureSubscription: 'MyAzureSubscription'
-    scriptLocation: 'inlineScript'
-    inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml -t ../metadata/run.json train_diabetes.py'
-    workingDirectory: 'training'
-- task: AzureCLI@1
-  displayName: 'Register Model'
-  inputs:
-    azureSubscription: 'MyAzureSubscription'
-    scriptLocation: 'inlineScript'
-    inlineScript: 'az ml model register -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(model.name) -f metadata/run.json  --asset-path outputs/models/sklearn_diabetes_model.pkl -d "Linear model using diabetes dataset" --tag "data"="diabetes" --tag "model"="regression" --model-framework ScikitLearn -t metadata/model.json'    
-- task: AzureCLI@1
-  displayName: 'Download Model'
-  inputs:
-    azureSubscription: 'MyAzureSubscription'
-    scriptLocation: 'inlineScript'
-    inlineScript: 'az ml model download -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -i $(jq -r .modelId metadata/model.json) -t ./models --overwrite'    
-- task: CopyFiles@2
-  displayName: 'Copy files to Artifact Staging Directory'
-  inputs:
-    SourceFolder: '$(Build.SourcesDirectory)'
-    Contents: |
-     **/metadata/*
-     **/models/*
-    TargetFolder: '$(Build.ArtifactStagingDirectory)'
-- task: Bash@3
-  displayName: 'Display Artifact Staging Directory'
-  inputs:
-    targetType: 'inline'
-    script: 'pwd && ls -laR $(Build.ArtifactStagingDirectory)'
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: drop'
-  inputs:
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+stages:
+- stage: Build
+  displayName: 'Train, Evaluate & Register Model'
+  jobs:
+  - job: Train
+    displayName: 'Train, Evaluate & Register Model'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.6'
+      inputs:
+        versionSpec: '3.6'
+        addToPath: true
+        architecture: 'x64'
+    - task: Bash@3
+      displayName: 'Install Python Requirements'
+      inputs:
+        targetType: filePath
+        filePath: 'setup/install_requirements.sh'
+        workingDirectory: 'setup'
+    - script: 'pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html'
+      displayName: 'Data Quality Check'
+    - task: PublishTestResults@2
+      displayName: 'Publish Data Quality Check test results'
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFiles: '**/test-*.xml'
+        testRunTitle: 'Publish Data Quality Check test results'
+    - task: AzureCLI@1
+      displayName: 'Add AzureML CLI Extension'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az extension add -n azure-cli-ml'
+    - task: AzureCLI@1
+      displayName: 'Create Azure ML Service Workspace'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml workspace create -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -l $(azureml.location) --exist-ok --yes'
+    - task: AzureCLI@1
+      displayName: 'Create Azure ML Compute'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml computetarget create amlcompute -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(amlcompute.clusterName) -s $(amlcompute.vmSize) --min-nodes $(amlcompute.minNodes) --max-nodes $(amlcompute.maxNodes) --idle-seconds-before-scaledown $(amlcompute.idleSecondsBeforeScaledown)'
+    - task: AzureCLI@1
+      displayName: 'Upload Data to the Default Datastore'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml datastore upload -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -n $(az ml datastore show-default -w $(azureml.workspaceName) -g $(azureml.resourceGroup) --query name -o tsv) -l data -t diabetes --overwrite'
+    - task: Bash@3
+      displayName: 'Create Metadata and Models Folder'
+      inputs:
+        targetType: 'inline'
+        script: 'mkdir metadata && mkdir models'
+    - task: AzureCLI@1
+      displayName: 'Train Model'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml run submit-script -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -e $(experiment.name) --ct $(amlcompute.clusterName) -d conda_dependencies.yml -t ../metadata/run.json train_diabetes.py'
+        workingDirectory: 'training'
+    - task: AzureCLI@1
+      displayName: 'Register Model'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml model register -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(model.name) -f metadata/run.json  --asset-path outputs/models/sklearn_diabetes_model.pkl -d "Linear model using diabetes dataset" --tag "data"="diabetes" --tag "model"="regression" --model-framework ScikitLearn -t metadata/model.json'    
+    - task: AzureCLI@1
+      displayName: 'Download Model'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml model download -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -i $(jq -r .modelId metadata/model.json) -t ./models --overwrite'    
+    - task: CopyFiles@2
+      displayName: 'Copy files to Artifact Staging Directory'
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)'
+        Contents: |
+          **/metadata/*
+          **/models/*
+          **/deployment/*
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    - task: Bash@3
+      displayName: 'Display Artifact Staging Directory'
+      inputs:
+        targetType: 'inline'
+        script: 'pwd && ls -laR $(Build.ArtifactStagingDirectory)'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: drop'
+      inputs:
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+- stage: Staging
+  displayName: Staging
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+    # track deployments on the environment
+  - deployment: DeployToACI
+    displayName: 'Deploy to ACI'
+    pool:
+      vmImage: 'ubuntu-latest'
+    # creates an environment if it doesn’t exist
+    environment: 'diabetes-staging'
+    strategy:
+      # default deployment strategy
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact: drop'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.ArtifactsDirectory)' 
+          - task: UsePythonVersion@0
+            displayName: 'Use Python 3.6'
+            inputs:
+              versionSpec: '3.6'
+              addToPath: true
+              architecture: 'x64'
+          - task: AzureCLI@1
+            displayName: 'Add AzureML CLI Extension'
+            inputs:
+              azureSubscription: 'MyAzureSubscription'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'az extension add -n azure-cli-ml'
+          - task: AzureCLI@1
+            displayName: 'Deploy to ML Service to ACI'
+            inputs:
+              azureSubscription: 'MyAzureSubscription'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) -f ../metadata/model.json --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite'
+              workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
