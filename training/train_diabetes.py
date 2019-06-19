@@ -5,7 +5,6 @@ import pandas as pd
 import json
 import subprocess
 
-from sklearn.datasets import load_diabetes
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
@@ -22,32 +21,29 @@ run = Run.get_context()
 
 print("Loading training data...")
 # https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html
-#diabetes = pd.read_csv('../data/diabetes.csv')
-#diabetes.columns 
+diabetes = pd.read_csv('./workspaceblobstore/diabetes/diabetes.csv')
+print("Columns:", diabetes.columns) 
+print("Diabetes data set dimensions : {}".format(diabetes.shape))
 
-#print("First few rows of the Diabetes data set:") 
-#diabetes.head()
-
-#print("Diabetes data set dimensions : {}".format(diabetes.shape))
-#diabetes.groupby('Outcome').size()
-
-X, y = load_diabetes(return_X_y=True)
-columns = ["age", "gender", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+y = diabetes.pop('Y')
+X_train, X_test, y_train, y_test = train_test_split(diabetes, y, test_size=0.2, random_state=0)
 data = {"train": {"X": X_train, "y": y_train}, "test": {"X": X_test, "y": y_test}}
 
 print("Training the model...")
 # Randomly pic alpha
 alphas = np.arange(0.0, 1.0, 0.05)
 alpha = alphas[np.random.choice(alphas.shape[0], 1, replace=False)][0]
-print(alpha)
-run.log("alpha: ", alpha)
+print("alpha:", alpha)
+run.log("alpha", alpha)
 reg = Ridge(alpha=alpha)
 reg.fit(data["train"]["X"], data["train"]["y"])
+run.log_list("coefficients", reg.coef_)
 
 print("Evaluate the model...")
 preds = reg.predict(data["test"]["X"])
-run.log("mse", mean_squared_error(preds, data["test"]["y"]))
+mse = mean_squared_error(preds, data["test"]["y"])
+print("Mean Squared Error:", mse)
+run.log("mse", mse)
 
 # Save model as part of the run history
 print("Exporting the model as pickle file...")
