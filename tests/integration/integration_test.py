@@ -7,10 +7,13 @@ test_sample = json.dumps({'data': [
 ]})
 test_sample = str(test_sample)
 
-def test_ml_service(scoreurl):
+def test_ml_service(scoreurl, scorekey):
     assert scoreurl != None
 
-    headers = {'Content-Type':'application/json'}
+    if scorekey is None:
+        headers = {'Content-Type':'application/json'}
+    else:
+        headers = {'Content-Type':'application/json', 'Authorization':('Bearer ' + scorekey)}
 
     resp = requests.post(scoreurl, test_sample, headers=headers)
     assert resp.status_code == requests.codes.ok

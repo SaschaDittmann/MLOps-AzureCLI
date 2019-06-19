@@ -44,14 +44,14 @@ stages:
         targetType: filePath
         filePath: 'setup/install_requirements.sh'
         workingDirectory: 'setup'
-    - script: 'pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html'
+    - script: 'pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html'
       displayName: 'Data Quality Check'
     - task: PublishTestResults@2
       displayName: 'Publish Data Quality Check test results'
       condition: succeededOrFailed()
       inputs:
         testResultsFiles: '**/test-*.xml'
-        testRunTitle: 'Publish Data Quality Check test results'
+        testRunTitle: 'Data Quality Check'
     - task: AzureCLI@1
       displayName: 'Add AzureML CLI Extension'
       inputs:
@@ -163,13 +163,9 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) -f ../metadata/model.json --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite'
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
-- stage: Test
-  displayName: Test
-  dependsOn: Staging
-  condition: succeeded()
-  jobs:
   - job: IntegrationTests
     displayName: 'Run Integration Tests'
+    dependsOn: DeployToACI
     pool:
       vmImage: 'ubuntu-latest'
     steps:
@@ -196,17 +192,17 @@ stages:
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
-        inlineScript: 'pytest integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html --scoreurl $(az ml service show -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) --query scoringUri -o tsv)'
+        inlineScript: 'pytest integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=integration_test --cov-report=xml --cov-report=html --scoreurl $(az ml service show -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) --query scoringUri -o tsv)'
         workingDirectory: 'tests/integration'
     - task: PublishTestResults@2
       displayName: 'Publish test results'
       condition: succeededOrFailed()
       inputs:
         testResultsFiles: '**/test-*.xml'
-        testRunTitle: 'Publish Integration Tests results'
+        testRunTitle: 'Integration Tests (Staging)'
 - stage: Production
   displayName: 'Deploy to Production'
-  dependsOn: Test
+  dependsOn: Staging
   condition: succeeded()
   jobs:
     # track deployments on the environment
@@ -254,3 +250,40 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.production) -f ../metadata/model.json --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $(aks.clusterName) --overwrite'
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
+  - job: IntegrationTests
+    displayName: 'Run Integration Tests'
+    dependsOn: DeployToAKS
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.6'
+      inputs:
+        versionSpec: '3.6'
+        addToPath: true
+        architecture: 'x64'
+    - task: Bash@3
+      displayName: 'Install Python Requirements'
+      inputs:
+        targetType: filePath
+        filePath: 'setup/install_requirements.sh'
+        workingDirectory: 'setup'
+    - task: AzureCLI@1
+      displayName: 'Add AzureML CLI Extension'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az extension add -n azure-cli-ml'
+    - task: AzureCLI@1
+      displayName: 'Run Integration Tests'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'pytest integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=integration_test --cov-report=xml --cov-report=html --scoreurl $(az ml service show -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.production) --query scoringUri -o tsv) --scorekey $(az ml service get-keys -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.production) --query primaryKey -o tsv)'
+        workingDirectory: 'tests/integration'
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFiles: '**/test-*.xml'
+        testRunTitle: 'Integration Tests (Production)'
