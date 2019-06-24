@@ -10,7 +10,7 @@ variables:
   azureml.resourceGroup: mlops-demo
   azureml.workspaceName: mlops-mlwrksp
   azureml.location: westeurope
-  amlcompute.clusterName: aml-compute
+  amlcompute.clusterName: cpu-cluster
   amlcompute.vmSize: STANDARD_DS2_V2
   amlcompute.minNodes: 0
   amlcompute.maxNodes: 2
