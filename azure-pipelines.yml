@@ -75,7 +75,7 @@ stages:
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
-        inlineScript: 'az ml datastore upload -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -n $(az ml datastore show-default -w $(azureml.workspaceName) -g $(azureml.resourceGroup) --query name -o tsv) -l data -t diabetes --overwrite'
+        inlineScript: 'az ml datastore upload -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -n $(az ml datastore show-default -w $(azureml.workspaceName) -g $(azureml.resourceGroup) --query name -o tsv) -p data -u diabetes --overwrite true'
     - task: Bash@3
       displayName: 'Create Metadata and Models Folder'
       inputs:
