@@ -137,6 +137,7 @@ stages:
       runOnce:
         deploy:
           steps:
+          - download: none
           - task: DownloadBuildArtifacts@0
             displayName: 'Download Artifact: drop'
             inputs:
@@ -217,6 +218,7 @@ stages:
       runOnce:
         deploy:
           steps:
+          - download: none
           - task: DownloadBuildArtifacts@0
             displayName: 'Download Artifact: drop'
             inputs:
