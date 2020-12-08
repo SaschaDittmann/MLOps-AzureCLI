@@ -2,13 +2,17 @@
   "schemaVersion": 1,
   "datasetType": "Tabular",
   "parameters": {
+    "header": true,
+    "includePath": false,
+    "inferColumnTypes": false,
     "path": [
       {
         "datastoreName": "<default-datastore>",
-        "relativePath": "diabetes/diabetes_test_samples.json"
+        "relativePath": "diabetes/diabetes_test_samples.csv"
       }
     ],
-    "sourceType": "json_lines_files"
+    "separator": ",",
+    "sourceType": "delimited_files"
   },
   "registration": {
     "createNewVersion": true,
