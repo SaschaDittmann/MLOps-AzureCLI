@@ -24,9 +24,12 @@ ws = run.experiment.workspace
 
 print("Loading training data...")
 # https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html
-datastore = ws.get_default_datastore()
-datastore_paths = [(datastore, 'diabetes/diabetes.csv')]
-traindata = Dataset.Tabular.from_delimited_files(path=datastore_paths)
+# *** Outdated, because I'm using the dataset feature now ***
+# datastore = ws.get_default_datastore()
+# datastore_paths = [(datastore, 'diabetes/diabetes.csv')]
+# traindata = Dataset.Tabular.from_delimited_files(path=datastore_paths)
+# ***********************************************************
+traindata = Dataset.get_by_name(ws, name='diabetes-dataset')
 diabetes = traindata.to_pandas_dataframe()
 print("Columns:", diabetes.columns) 
 print("Diabetes data set dimensions : {}".format(diabetes.shape))
