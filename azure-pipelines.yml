@@ -128,9 +128,52 @@ stages:
         ArtifactName: 'drop'
         publishLocation: 'Container'
         PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+- stage: PreDeployment
+  displayName: 'Pre-Deployment'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: 
+    displayName: 'Register Inference Environment Definition'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - download: none
+    - task: DownloadBuildArtifacts@0
+      displayName: 'Download Artifact: drop'
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)' 
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.6'
+      inputs:
+        versionSpec: '3.6'
+        addToPath: true
+        architecture: 'x64'
+    - task: AzureCLI@1
+      displayName: 'Add AzureML CLI Extension'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az extension add -n azure-cli-ml'
+    - task: AzureCLI@1
+      displayName: 'Register Environment Definition'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az ml environment register -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -d deployment -t metadata/diabetes-environment.json'
+        workingDirectory: '$(System.ArtifactsDirectory)/drop'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: drop'
+      inputs:
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+        PathtoPublish: '$(System.ArtifactsDirectory)/drop'
 - stage: Staging
   displayName: 'Deploy to Staging'
-  dependsOn: Build
+  dependsOn: PreDeployment
   condition: succeeded()
   jobs:
     # track deployments on the environment
