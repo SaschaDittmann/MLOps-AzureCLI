@@ -53,7 +53,7 @@ stages:
         testResultsFiles: '**/test-*.xml'
         testRunTitle: 'Data Quality Check'
     - task: AzureCLI@1
-      displayName: 'Add AzureML CLI Extension'
+      displayName: 'Add Azure ML CLI Extension'
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
@@ -153,7 +153,7 @@ stages:
         addToPath: true
         architecture: 'x64'
     - task: AzureCLI@1
-      displayName: 'Add AzureML CLI Extension'
+      displayName: 'Add Azure ML CLI Extension'
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
@@ -164,6 +164,59 @@ stages:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
         inlineScript: 'az ml environment register -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -d deployment -t metadata/diabetes-environment.json'
+        workingDirectory: '$(System.ArtifactsDirectory)/drop'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: drop'
+      inputs:
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+        PathtoPublish: '$(System.ArtifactsDirectory)/drop'
+  - job: 
+    displayName: 'Azure ML Model Profiling'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - download: none
+    - task: DownloadBuildArtifacts@0
+      displayName: 'Download Artifact: drop'
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)' 
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.6'
+      inputs:
+        versionSpec: '3.6'
+        addToPath: true
+        architecture: 'x64'
+    - task: AzureCLI@1
+      displayName: 'Install Azure ML Model Profiling Requirements'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'pip install --upgrade azureml-sdk azure-cli'
+    - task: AzureCLI@1
+      displayName: 'Add Azure ML CLI Extension'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az extension add -n azure-cli-ml'
+    - task: AzureCLI@1
+      displayName: 'Register Diabetes Test Samples'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          sed "s/<default-datastore>/$(az ml datastore show-default -w $(azureml.workspaceName) -g $(azureml.resourceGroup) --query name -o tsv)/g" datasets/diabetes-test-samples-specs.json > $(System.ArtifactsDirectory)/drop/metadata/diabetes-test-samples-specs.json
+          az ml dataset register -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -f $(System.ArtifactsDirectory)/drop/metadata/diabetes-dataset-specs.json -t $(System.ArtifactsDirectory)/drop/metadata/diabetes-test-samples.json
+    - task: AzureCLI@1
+      displayName: 'Create Azure ML Model Profile'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f metadata/model.json --es deployment/score.py -e $(jq -r '.name' metadata/diabetes-environment.json) --ev $(jq -r '.version' metadata/diabetes-environment.json) --idi $(jq -r '.registration.id' metadata/diabetes-dataset.json) -t metadata/profileresult.json
         workingDirectory: '$(System.ArtifactsDirectory)/drop'
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Artifact: drop'
@@ -203,7 +256,7 @@ stages:
               addToPath: true
               architecture: 'x64'
           - task: AzureCLI@1
-            displayName: 'Add AzureML CLI Extension'
+            displayName: 'Add Azure ML CLI Extension'
             inputs:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
@@ -234,7 +287,7 @@ stages:
         filePath: 'setup/install_requirements.sh'
         workingDirectory: 'setup'
     - task: AzureCLI@1
-      displayName: 'Add AzureML CLI Extension'
+      displayName: 'Add Azure ML CLI Extension'
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
@@ -284,7 +337,7 @@ stages:
               addToPath: true
               architecture: 'x64'
           - task: AzureCLI@1
-            displayName: 'Add AzureML CLI Extension'
+            displayName: 'Add Azure ML CLI Extension'
             inputs:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
@@ -322,7 +375,7 @@ stages:
         filePath: 'setup/install_requirements.sh'
         workingDirectory: 'setup'
     - task: AzureCLI@1
-      displayName: 'Add AzureML CLI Extension'
+      displayName: 'Add Azure ML CLI Extension'
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'

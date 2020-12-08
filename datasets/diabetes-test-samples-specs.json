@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "datasetType": "Tabular",
+  "parameters": {
+    "path": [
+      {
+        "datastoreName": "<default-datastore>",
+        "relativePath": "diabetes/diabetes_test_samples.json"
+      }
+    ],
+    "sourceType": "json_lines_files"
+  },
+  "registration": {
+    "createNewVersion": true,
+    "name": "diabetes-test-samples"
+  }
+}
