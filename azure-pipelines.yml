@@ -166,11 +166,11 @@ stages:
         inlineScript: 'az ml environment register -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -d deployment -t metadata/diabetes-environment.json'
         workingDirectory: '$(System.ArtifactsDirectory)/drop'
     - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact: drop'
+      displayName: 'Publish Artifact: environment'
       inputs:
-        ArtifactName: 'drop'
+        ArtifactName: 'environment'
         publishLocation: 'Container'
-        PathtoPublish: '$(System.ArtifactsDirectory)/drop'
+        PathtoPublish: '$(System.ArtifactsDirectory)/drop/metadata/diabetes-environment.json'
   - job: 
     displayName: 'Azure ML Model Profiling'
     pool:
@@ -183,6 +183,13 @@ stages:
         buildType: 'current'
         downloadType: 'single'
         artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)' 
+    - task: DownloadBuildArtifacts@0
+      displayName: 'Download Artifact: environment'
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'environment'
         downloadPath: '$(System.ArtifactsDirectory)' 
     - task: UsePythonVersion@0
       displayName: 'Use Python 3.6'
@@ -216,14 +223,14 @@ stages:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f metadata/model.json --es deployment/score.py -e $(jq -r '.name' metadata/diabetes-environment.json) --ev $(jq -r '.version' metadata/diabetes-environment.json) --idi $(jq -r '.registration.id' metadata/diabetes-dataset.json) -t metadata/profileresult.json
-        workingDirectory: '$(System.ArtifactsDirectory)/drop'
+          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f drop/metadata/model.json --es drop/deployment/score.py -e $(jq -r '.name' environment/metadata/diabetes-environment.json) --ev $(jq -r '.version' environment/metadata/diabetes-environment.json) --idi $(jq -r '.registration.id' drop/metadata/diabetes-dataset.json) -t drop/metadata/profile.json
+        workingDirectory: '$(System.ArtifactsDirectory)'
     - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact: drop'
+      displayName: 'Publish Artifact: profile'
       inputs:
-        ArtifactName: 'drop'
+        ArtifactName: 'profile'
         publishLocation: 'Container'
-        PathtoPublish: '$(System.ArtifactsDirectory)/drop'
+        PathtoPublish: '$(System.ArtifactsDirectory)/drop/metadata/profile.json'
 - stage: Staging
   displayName: 'Deploy to Staging'
   dependsOn: PreDeployment
