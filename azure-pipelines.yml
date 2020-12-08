@@ -133,7 +133,7 @@ stages:
   dependsOn: Build
   condition: succeeded()
   jobs:
-  - job: 
+  - job: RegisterEnvironment
     displayName: 'Register Inference Environment Definition'
     pool:
       vmImage: 'ubuntu-latest'
@@ -171,8 +171,9 @@ stages:
         ArtifactName: 'environment'
         publishLocation: 'Container'
         PathtoPublish: '$(System.ArtifactsDirectory)/drop/metadata/diabetes-environment.json'
-  - job: 
+  - job: ModelProfile
     displayName: 'Azure ML Model Profiling'
+    dependsOn: RegisterEnvironment
     pool:
       vmImage: 'ubuntu-latest'
     steps:
