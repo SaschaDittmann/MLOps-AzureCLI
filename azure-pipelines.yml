@@ -82,6 +82,14 @@ stages:
         targetType: 'inline'
         script: 'mkdir metadata && mkdir models'
     - task: AzureCLI@1
+      displayName: 'Register Diabetes Dataset'
+      inputs:
+        azureSubscription: 'MyAzureSubscription'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          sed "s/<default-datastore>/$(az ml datastore show-default -w $(azureml.workspaceName) -g $(azureml.resourceGroup) --query name -o tsv)/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
+          az ml dataset register -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json'
+    - task: AzureCLI@1
       displayName: 'Train Model'
       inputs:
         azureSubscription: 'MyAzureSubscription'
