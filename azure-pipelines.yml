@@ -218,14 +218,14 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: |
           sed "s/<default-datastore>/$(az ml datastore show-default -w $(azureml.workspaceName) -g $(azureml.resourceGroup) --query name -o tsv)/g" datasets/diabetes-test-samples-specs.json > $(System.ArtifactsDirectory)/drop/metadata/diabetes-test-samples-specs.json
-          az ml dataset register -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -f $(System.ArtifactsDirectory)/drop/metadata/diabetes-dataset-specs.json -t $(System.ArtifactsDirectory)/drop/metadata/diabetes-test-samples.json
+          az ml dataset register -w $(azureml.workspaceName) -g $(azureml.resourceGroup) -f $(System.ArtifactsDirectory)/drop/metadata/diabetes-test-samples-specs.json -t $(System.ArtifactsDirectory)/drop/metadata/diabetes-test-samples.json
     - task: AzureCLI@1
       displayName: 'Create Azure ML Model Profile'
       inputs:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f drop/metadata/model.json --es drop/deployment/score.py -e $(jq -r '.name' environment/diabetes-environment.json) --ev $(jq -r '.version' environment/diabetes-environment.json) --idi $(jq -r '.registration.id' drop/metadata/diabetes-dataset.json) -t drop/metadata/profile.json
+          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f drop/metadata/model.json --es drop/deployment/score.py -e $(jq -r '.name' environment/diabetes-environment.json) --ev $(jq -r '.version' environment/diabetes-environment.json) --idi $(jq -r '.registration.id' drop/metadata/diabetes-test-samples.json) -t drop/metadata/profile.json
         workingDirectory: '$(System.ArtifactsDirectory)'
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Artifact: profile'
