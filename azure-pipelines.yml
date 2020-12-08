@@ -223,7 +223,7 @@ stages:
         azureSubscription: 'MyAzureSubscription'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f drop/metadata/model.json --es drop/deployment/score.py -e $(jq -r '.name' environment/metadata/diabetes-environment.json) --ev $(jq -r '.version' environment/metadata/diabetes-environment.json) --idi $(jq -r '.registration.id' drop/metadata/diabetes-dataset.json) -t drop/metadata/profile.json
+          az ml model profile -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n "$(model.profile.name)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" -f drop/metadata/model.json --es drop/deployment/score.py -e $(jq -r '.name' environment/diabetes-environment.json) --ev $(jq -r '.version' environment/diabetes-environment.json) --idi $(jq -r '.registration.id' drop/metadata/diabetes-dataset.json) -t drop/metadata/profile.json
         workingDirectory: '$(System.ArtifactsDirectory)'
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Artifact: profile'
