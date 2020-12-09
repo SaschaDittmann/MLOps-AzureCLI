@@ -11,7 +11,7 @@
         "relativePath": "diabetes/diabetes_test_samples.csv"
       }
     ],
-    "separator": ",",
+    "separator": ";",
     "sourceType": "delimited_files"
   },
   "registration": {
