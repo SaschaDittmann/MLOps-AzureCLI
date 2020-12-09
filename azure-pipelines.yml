@@ -173,6 +173,7 @@ stages:
         publishLocation: 'Container'
         PathtoPublish: '$(System.ArtifactsDirectory)/drop/metadata/diabetes-environment.json'
   - job: ModelProfile
+    # A model profile of a model is a resource requirement recommendation.
     displayName: 'Azure ML Model Profiling'
     dependsOn: RegisterEnvironment
     pool:
