@@ -291,7 +291,7 @@ stages:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) -f ../metadata/model.json --dc aciDeploymentConfig.yml --es score.py -e $(jq -r '.name' ../../environment/diabetes-environment.json) --ev $(jq -r '.version' ../../environment/diabetes-environment.json) --pi ../../profile/profile.json --overwrite
+                az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) --overwrite -f ../metadata/model.json --dc aciDeploymentConfig.yml --es score.py -e $(jq -r '.name' ../../environment/diabetes-environment.json) --ev $(jq -r '.version' ../../environment/diabetes-environment.json) --pi ../../profile/profile.json
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
   - job: IntegrationTests
     displayName: 'Run Integration Tests'
