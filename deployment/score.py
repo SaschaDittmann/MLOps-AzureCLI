@@ -9,6 +9,9 @@ from joblib import load
 from azureml.core.model import Model
 #from azureml.monitoring import ModelDataCollector
 
+from inference_schema.schema_decorators import input_schema, output_schema
+from inference_schema.parameter_types.numpy_parameter_type import StandardPythonParameterType
+
 def init():
     global model
 
@@ -16,6 +19,11 @@ def init():
     model_path = Model.get_model_path(model_name = 'diabetes_model')
     model = load(model_path)
     
+input_sample = { "data": [ [1,2,3,4,54,6,7,8,88,10], [10,9,8,37,36,45,4,33,2,1] ] }
+output_sample = { "result": [27791.59951581891, 10958.615160340678] }
+
+@input_schema('raw_data', StandardPythonParameterType(input_sample))
+@output_schema(StandardPythonParameterType(output_sample))
 def run(raw_data):
     try:
         data = json.loads(raw_data)["data"]
