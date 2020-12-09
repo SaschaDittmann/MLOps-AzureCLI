@@ -17,7 +17,7 @@ variables:
   amlcompute.idleSecondsBeforeScaledown: 300
   experiment.name: diabetes_sklearn
   model.name: diabetes_model
-  model.profile.name: diabetes-model-profile
+  model.profile.name: diabetes-profile
   service.name.staging: diabetes-service-aci
   aks.clusterName: aks
   aks.vmSize: Standard_B4ms
