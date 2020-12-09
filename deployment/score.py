@@ -10,7 +10,7 @@ from azureml.core.model import Model
 #from azureml.monitoring import ModelDataCollector
 
 from inference_schema.schema_decorators import input_schema, output_schema
-from inference_schema.parameter_types.numpy_parameter_type import StandardPythonParameterType
+from inference_schema.parameter_types.standard_py_parameter_type import StandardPythonParameterType
 
 def init():
     global model
