@@ -355,6 +355,20 @@ stages:
               downloadType: 'single'
               artifactName: 'drop'
               downloadPath: '$(System.ArtifactsDirectory)' 
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact: environment'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'environment'
+              downloadPath: '$(System.ArtifactsDirectory)' 
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact: profile'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'profile'
+              downloadPath: '$(System.ArtifactsDirectory)' 
           - task: UsePythonVersion@0
             displayName: 'Use Python 3.6'
             inputs:
@@ -379,7 +393,8 @@ stages:
             inputs:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
-              inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.production) -f ../metadata/model.json --dc aksDeploymentConfig.yml --ic inferenceConfig.yml --ct $(aks.clusterName) --overwrite'
+              inlineScript: |
+                az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.production) -f ../metadata/model.json --dc aksDeploymentConfig.yml --es score.py -e $(jq -r '.name' ../../environment/diabetes-environment.json) --ev $(jq -r '.version' ../../environment/diabetes-environment.json) --pi ../../profile/profile.json --ct $(aks.clusterName) --overwrite'
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
   - job: IntegrationTests
     displayName: 'Run Integration Tests'
