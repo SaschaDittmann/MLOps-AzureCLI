@@ -173,6 +173,7 @@ stages:
         publishLocation: 'Container'
         PathtoPublish: '$(System.ArtifactsDirectory)/drop/metadata/diabetes-environment.json'
   - job: ModelProfile
+    # A model profile of a model is a resource requirement recommendation.
     displayName: 'Azure ML Model Profiling'
     dependsOn: RegisterEnvironment
     pool:
@@ -258,6 +259,20 @@ stages:
               downloadType: 'single'
               artifactName: 'drop'
               downloadPath: '$(System.ArtifactsDirectory)' 
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact: environment'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'environment'
+              downloadPath: '$(System.ArtifactsDirectory)' 
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact: profile'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'profile'
+              downloadPath: '$(System.ArtifactsDirectory)' 
           - task: UsePythonVersion@0
             displayName: 'Use Python 3.6'
             inputs:
@@ -275,7 +290,8 @@ stages:
             inputs:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
-              inlineScript: 'az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) -f ../metadata/model.json --dc aciDeploymentConfig.yml --ic inferenceConfig.yml --overwrite'
+              inlineScript: |
+                az ml model deploy -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(service.name.staging) -f ../metadata/model.json --dc aciDeploymentConfig.yml --es score.py -e $(jq -r '.name' ../../environment/diabetes-environment.json) --ev $(jq -r '.version' ../../environment/diabetes-environment.json) --pi ../../profile/profile.json --overwrite
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
   - job: IntegrationTests
     displayName: 'Run Integration Tests'
