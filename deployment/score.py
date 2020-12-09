@@ -17,6 +17,7 @@ from inference_schema.parameter_types.pandas_parameter_type import PandasParamet
 def init():
     global model
     
+    #Print statement for appinsights custom traces:
     print ("model initialized" + time.strftime("%H:%M:%S"))
     
     model_path = Model.get_model_path(model_name = 'diabetes_model')
@@ -32,5 +33,6 @@ def run(data):
         result = model.predict(data)
         return json.dumps({"result": result.tolist()})
     except Exception as e:
-        result = str(e)
-        return json.dumps({"error": result})
+        error = str(e)
+        print (error + time.strftime("%H:%M:%S"))
+        return json.dumps({"error": error})
