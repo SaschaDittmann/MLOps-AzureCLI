@@ -52,11 +52,15 @@ jobs:
       AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
     steps:
     - name: Create Metadata and Models Folder
-      run: mkdir -p metadata && mkdir -p models
+      run: mkdir -p $HOME/metadata && mkdir -p $HOME/models
     - name: Azure Login
       run: |
-        echo "$AZURE_CREDENTIALS" \
-          | jq -r '.tenantId' 
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
         az config set extension.use_dynamic_install=yes_without_prompt
