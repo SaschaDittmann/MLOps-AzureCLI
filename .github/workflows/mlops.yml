@@ -154,7 +154,7 @@ jobs:
         path: ./metadata/diabetes-environment.json
   modelprofile:
     runs-on: ubuntu-latest
-    uses: [registerenvironment, train]
+    needs: [train, registerenvironment]
     name: Azure ML Model Profiling
     container: 
       image: mcr.microsoft.com/azure-cli:latest
