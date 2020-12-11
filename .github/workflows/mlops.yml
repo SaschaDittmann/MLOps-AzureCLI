@@ -54,6 +54,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
+    - name: Azure ML SDK
+      run: pip install --upgrade azureml-sdk[cli]
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -91,5 +93,31 @@ jobs:
     - name: Train Model
       run: |
         az ml run submit-script -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -e $(experiment.name) --ct "$AZUREML_COMPUTE_CLUSTER_NAME" -d conda_dependencies.yml -c train_diabetes -t ../metadata/run.json train_diabetes.py
+          -e "$AZUREML_EXPERIMENT_NAME" --ct "$AZUREML_COMPUTE_CLUSTER_NAME" \
+          -d conda_dependencies.yml -c train_diabetes \
+          -t ../metadata/run.json train_diabetes.py
       working-directory: training
+    - name: Register Model
+      run: |
+        az ml model register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -n "$AZUREML_MODEL_NAME" -f metadata/run.json \
+          --asset-path outputs/models/sklearn_diabetes_model.pkl \
+          -d "Linear model using diabetes dataset" \
+          --tag "data"="diabetes" --tag "model"="regression" \
+          --model-framework ScikitLearn \
+          -t metadata/model.json
+    - name: Download Model
+      run: |
+        az ml model download -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -i $(jq -r .modelId metadata/model.json) \
+          -t ./models --overwrite
+    - name: Upload Model as Pipeline Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: model
+        path: ./models/
+    - name: Store Metadata
+      uses: actions/upload-artifact@v2
+      with:
+        name: metadata-train
+        path: ./metadata/
