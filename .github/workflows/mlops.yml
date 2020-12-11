@@ -45,7 +45,7 @@ jobs:
         check_name: Data Quality Check Results
   train:
     runs-on: ubuntu-latest
-    #needs: dataquality
+    needs: dataquality
     name: Train, Evaluate & Register Model
     container: 
       image: mcr.microsoft.com/azure-cli:latest
