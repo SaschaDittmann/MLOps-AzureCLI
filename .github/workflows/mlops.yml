@@ -55,7 +55,7 @@ jobs:
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
     - name: Azure ML SDK
-      run: pip install --upgrade azureml-sdk[cli]
+      run: pip install --upgrade azureml-sdk
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -121,3 +121,33 @@ jobs:
       with:
         name: metadata-train
         path: ./metadata/
+  registerenvironment:
+    runs-on: ubuntu-latest
+    name: Register Inference Environment Definition
+    container: 
+      image: mcr.microsoft.com/azure-cli:latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
+    - name: Add Azure ML CLI Extension
+      run: |
+        az config set extension.use_dynamic_install=yes_without_prompt
+        az extension add -n azure-cli-ml
+    - name: Register Environment Definition
+      run: |
+        mkdir -p metadata
+        az ml environment register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -d deployment -t metadata/diabetes-environment.json
+    - name: Store Environment Registration Results
+      uses: actions/upload-artifact@v2
+      with:
+        name: environment
+        path: ./metadata/diabetes-environment.json
