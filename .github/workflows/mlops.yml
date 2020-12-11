@@ -49,13 +49,13 @@ jobs:
       with:
         azcliversion: latest
         inlineScript: |
+          az config set extension.use_dynamic_install=yes_without_prompt
           az extension add -n azure-cli-ml
     - name: Create Azure ML Service Workspace
       uses: azure/CLI@v1
       with:
         azcliversion: latest
         inlineScript: |
-          az config set extension.use_dynamic_install=yes_without_prompt
           az ml workspace create -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
             -l "$REGION" --exist-ok --yes
     - name: Create Azure ML Compute
@@ -65,5 +65,5 @@ jobs:
         inlineScript: |
           az ml computetarget create amlcompute -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
             -n "$AZUREML_COMPUTE_CLUSTER_NAME" -s "$AZUREML_COMPUTE_VMSIZE" \
-            --min-nodes "$AZUREML_COMPUTE_MIN_NODES" --max-nodes "AZUREML_COMPUTE_MAX_NODES" \
+            --min-nodes "$AZUREML_COMPUTE_MIN_NODES" --max-nodes "$AZUREML_COMPUTE_MAX_NODES" \
             --idle-seconds-before-scaledown "$AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN"
