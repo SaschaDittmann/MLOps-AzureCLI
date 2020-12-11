@@ -57,10 +57,10 @@ jobs:
       run: mkdir -p metadata && mkdir -p models
     - name: Install jq
       run: apt-get update && apt-get install -y jq
-    - name: Install Azure CLI
-      run: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-    - name: Install Azure ML Dataprep
-      run: pip install --upgrade azureml-dataprep
+    - name: Install Azure CLI & Azure ML SDK
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+        pip install --upgrade azureml-dataprep azure-cli
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -85,7 +85,6 @@ jobs:
           --idle-seconds-before-scaledown "$AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN"
     - name: Upload Data to the Default Datastore
       run: |
-        ls -la
         az ml datastore upload -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -n $(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv) \
           -p data -u diabetes --overwrite true
