@@ -1,0 +1,27 @@
+name: Deploy To Azure Storage Static Website
+
+on:
+  workflow_dispatch:
+  push:
+    branches:    
+      - dev
+
+env:
+  RESOURCE_GROUP: mlops-demo
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Azure CLI - Upload Files
+      uses: azure/CLI@v1
+      with:
+        azcliversion: latest
+        inlineScript: |
+          az storage blob sync -s $GITHUB_WORKSPACE/static -c '$web' --account-name "$STORAGE_ACCOUNT_NAME"
