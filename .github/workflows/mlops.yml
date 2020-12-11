@@ -48,6 +48,8 @@ jobs:
       image: mcr.microsoft.com/azure-cli:latest
       volumes:
       - /github/workspace:/root
+    env:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
     steps:
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
