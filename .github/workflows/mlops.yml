@@ -7,8 +7,10 @@ on:
       - dev
 
 env:
-  RESOURCE_GROUP: mlops-demo
   PYTHON_VERSION: 3.6
+  RESOURCE_GROUP: mlops-demo
+  REGION: westeurope
+  AZUREML_WORKSPACE_NAME: mlops-mlwrksp
 
 jobs:
   train:
@@ -25,7 +27,7 @@ jobs:
       working-directory: setup
     - name: Data Quality Check
       run: pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html
-    - name: Publish Unit Test Results
+    - name: Publish Data Quality Check
       uses: EnricoMi/publish-unit-test-result-action@v1.6
       if: always()
       with:
@@ -36,3 +38,15 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Add Azure ML CLI Extension
+      uses: azure/CLI@v1
+      with:
+        azcliversion: latest
+        inlineScript: |
+          az extension add -n azure-cli-ml
+    - name: Create Azure ML Service Workspace
+      uses: azure/CLI@v1
+      with:
+        azcliversion: latest
+        inlineScript: |
+          az ml workspace create -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -l "$REGION" --exist-ok --yes
