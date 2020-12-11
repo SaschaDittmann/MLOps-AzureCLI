@@ -40,6 +40,8 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         files: junit/**/*.xml
         check_name: Data Quality Check
+    - name: Create Metadata and Models Folder
+      run: mkdir -p metadata && mkdir -p models
     - name: Azure Login
       uses: azure/login@v1
       with:
@@ -67,3 +69,12 @@ jobs:
             -n "$AZUREML_COMPUTE_CLUSTER_NAME" -s "$AZUREML_COMPUTE_VMSIZE" \
             --min-nodes "$AZUREML_COMPUTE_MIN_NODES" --max-nodes "$AZUREML_COMPUTE_MAX_NODES" \
             --idle-seconds-before-scaledown "$AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN"
+    - name: Upload Data to the Default Datastore
+      uses: azure/CLI@v1
+      with:
+        azcliversion: latest
+        inlineScript: |
+          az ml datastore upload -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+            -n $(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv) \
+            -p data -u diabetes --overwrite true
+            
