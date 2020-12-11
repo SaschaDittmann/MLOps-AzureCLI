@@ -93,8 +93,7 @@ jobs:
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json \
-          --skip-validation
+          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json
     - name: Train Model
       run: |
         az ml run submit-script -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
