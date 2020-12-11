@@ -49,12 +49,18 @@ jobs:
     needs: dataquality
     name: Train, Evaluate & Register Model
     container: 
-      image: mcr.microsoft.com/azure-cli:latest
+      image: python:3.6
     steps:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
+    - name: Install jq
+      run: apt-get update && apt-get install -y jq
+    - name: Install Azure CLI & Azure ML Dataprep
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+        pip install --upgrade azureml-dataprep azure-cli
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
