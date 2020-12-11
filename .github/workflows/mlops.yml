@@ -21,7 +21,7 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     - name: Install Python Requirements
-      run: install_requirements.sh
+      run: ./install_requirements.sh
       working-directory: setup
     - name: Data Quality Check
       run: pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html
