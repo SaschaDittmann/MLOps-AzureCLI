@@ -60,7 +60,7 @@ jobs:
     - name: Install Azure CLI & Azure ML SDK
       run: |
         curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-        pip install --upgrade azureml-dataprep azure-cli
+        pip install --upgrade azureml-sdk azure-cli
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -92,7 +92,6 @@ jobs:
       run: |
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
-        cat metadata/diabetes-dataset-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json
     - name: Train Model
