@@ -55,6 +55,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
+    - name: Install jq
+      run: apt-get update && apt-get install -y jq
     - name: Install Azure CLI
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
     - name: Install Azure ML SDK
@@ -175,6 +177,8 @@ jobs:
       with:
         name: environment
         path: ./metadata/diabetes-environment.json
+    - name: Install jq
+      run: apt-get update && apt-get install -y jq
     - name: Install Azure CLI
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
     - name: Install Azure ML SDK
