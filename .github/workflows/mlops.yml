@@ -18,6 +18,7 @@ env:
   AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN: 300
   AZUREML_EXPERIMENT_NAME: diabetes_sklearn
   AZUREML_MODEL_NAME: diabetes_model
+  AZUREML_MODEL_PROFILE_NAME: diabetes-profile
   AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
 jobs:
@@ -45,7 +46,7 @@ jobs:
         check_name: Data Quality Check Results
   train:
     runs-on: ubuntu-latest
-    #needs: dataquality
+    needs: dataquality
     name: Train, Evaluate & Register Model
     container: 
       image: mcr.microsoft.com/azure-cli:latest
@@ -55,7 +56,7 @@ jobs:
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
     - name: Azure ML SDK
-      run: pip install --upgrade azureml-sdk
+      run: pip install --upgrade azureml-sdk azure-cli
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -151,3 +152,58 @@ jobs:
       with:
         name: environment
         path: ./metadata/diabetes-environment.json
+  modelprofile:
+    runs-on: ubuntu-latest
+    uses: [registerenvironment, train]
+    name: Azure ML Model Profiling
+    container: 
+      image: mcr.microsoft.com/azure-cli:latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Create Metadata Folder
+      run: mkdir -p metadata
+    - name: Download Metadata (From Training)
+      uses: actions/download-artifact@v2
+      with:
+        name: metadata-train
+        path: ./metadata/
+    - name: Download Environment Registration Results
+      uses: actions/download-artifact@v2
+      with:
+        name: environment
+        path: ./metadata/diabetes-environment.json
+    - name: Azure ML SDK
+      run: pip install --upgrade azureml-sdk azure-cli
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
+    - name: Add Azure ML CLI Extension
+      run: |
+        az config set extension.use_dynamic_install=yes_without_prompt
+        az extension add -n azure-cli-ml
+    - name: Register Diabetes Test Samples
+      run: |
+        defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
+        sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-test-samples-specs.json > metadata/diabetes-test-samples-specs.json
+        az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json
+    - name: Create Azure ML Model Profile
+      run: |
+        az ml model profile -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -n "$AZUREML_MODEL_PROFILE_NAME-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" \
+          -f metadata/model.json --es deployment/score.py \
+          -e $(jq -r '.name' metadata/diabetes-environment.json) \
+          --ev $(jq -r '.version' metadata/diabetes-environment.json) \
+          --idi $(jq -r '.registration.id' metadata/diabetes-test-samples.json) \
+          -t metadata/modelprofile.json
+    - name: Store Profiling Results
+      uses: actions/upload-artifact@v2
+      with:
+        name: modelprofile
+        path: ./metadata/modelprofile.json
