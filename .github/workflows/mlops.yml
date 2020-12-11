@@ -59,8 +59,8 @@ jobs:
       run: apt-get update && apt-get install -y jq
     - name: Install Azure CLI
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-    - name: Install Azure ML SDK
-      run: pip install --upgrade azureml-sdk
+    - name: Install Azure ML Dataprep
+      run: pip install --upgrade azureml-dataprep
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -181,8 +181,8 @@ jobs:
       run: apt-get update && apt-get install -y jq
     - name: Install Azure CLI
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-    - name: Install Azure ML SDK
-      run: pip install --upgrade azureml-sdk
+    - name: Install Azure ML Dataprep
+      run: pip install --upgrade azureml-dataprep
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
