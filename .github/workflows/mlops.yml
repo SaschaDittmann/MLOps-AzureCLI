@@ -21,9 +21,17 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     - name: Install Python Requirements
-      run: setup/install_requirements.sh
+      run: install_requirements.sh
+      working-directory: setup
     - name: Data Quality Check
       run: pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html
+    - name: Publish Unit Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v1.6
+      if: always()
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: junit/**/*.xml
+        check_name: Data Quality Check
     - name: Azure Login
       uses: azure/login@v1
       with:
