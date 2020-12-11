@@ -49,18 +49,12 @@ jobs:
     needs: dataquality
     name: Train, Evaluate & Register Model
     container: 
-      image: python:3.6
+      image: mcr.microsoft.com/azure-cli:latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
-    - name: Install jq
-      run: apt-get update && apt-get install -y jq
-    - name: Install Azure CLI & Azure ML SDK
-      run: |
-        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-        pip install --upgrade azureml-sdk azure-cli
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -93,7 +87,8 @@ jobs:
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json
+          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json \
+          --skip-validation
     - name: Train Model
       run: |
         az ml run submit-script -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
