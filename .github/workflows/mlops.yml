@@ -16,6 +16,9 @@ env:
   AZUREML_COMPUTE_MIN_NODES: 0
   AZUREML_COMPUTE_MAX_NODES: 2
   AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN: 300
+  AZUREML_EXPERIMENT_NAME: diabetes_sklearn
+  AZUREML_MODEL_NAME: diabetes_model
+  AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
 jobs:
   dataquality:
@@ -42,17 +45,18 @@ jobs:
         check_name: Data Quality Check Results
   train:
     runs-on: ubuntu-latest
-    needs: dataquality
+    #needs: dataquality
     name: Train, Evaluate & Register Model
     container: 
       image: mcr.microsoft.com/azure-cli:latest
       volumes:
       - /github/workspace:/root
     env:
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      BASE_DIRECTORY: /root
     steps:
     - name: Create Metadata and Models Folder
-      run: mkdir -p $HOME/metadata && mkdir -p $HOME/models
+      run: mkdir -p metadata && mkdir -p models
+      working-directory: ${{ env.BASE_DIRECTORY }}
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -80,3 +84,16 @@ jobs:
         az ml datastore upload -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -n $(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv) \
           -p data -u diabetes --overwrite true
+      working-directory: ${{ env.BASE_DIRECTORY }}
+    - name: Register Diabetes Dataset
+      run: |
+        defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
+        sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
+        az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json
+      working-directory: ${{ env.BASE_DIRECTORY }}
+    - name: Train Model
+      run: |
+        az ml run submit-script -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -e $(experiment.name) --ct "$AZUREML_COMPUTE_CLUSTER_NAME" -d conda_dependencies.yml -c train_diabetes -t ../metadata/run.json train_diabetes.py
+      working-directory: ${{ env.BASE_DIRECTORY }}/training
