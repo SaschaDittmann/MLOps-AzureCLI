@@ -1,4 +1,4 @@
-name: Deploy To Azure Storage Static Website
+name: MLOps Pipeline
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ on:
 
 env:
   RESOURCE_GROUP: mlops-demo
+  PYTHON_VERSION: 3.6
 
 jobs:
   train:
@@ -15,13 +16,15 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install Python Requirements
+      run: setup/install_requirements.sh
+    - name: Data Quality Check
+      run: pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-    - name: Azure CLI - Upload Files
-      uses: azure/CLI@v1
-      with:
-        azcliversion: latest
-        inlineScript: |
-          az storage blob sync -s $GITHUB_WORKSPACE/static -c '$web' --account-name "$STORAGE_ACCOUNT_NAME"
