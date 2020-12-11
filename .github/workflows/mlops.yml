@@ -45,15 +45,17 @@ jobs:
         check_name: Data Quality Check Results
   train:
     runs-on: ubuntu-latest
-    needs: dataquality
+    #needs: dataquality
     name: Train, Evaluate & Register Model
     container: 
       image: mcr.microsoft.com/azure-cli:latest
-      volumes:
-      - /github/workspace:/root
     env:
       BASE_DIRECTORY: /root
     steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: ${{ env.BASE_DIRECTORY }}
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
       working-directory: ${{ env.BASE_DIRECTORY }}
@@ -81,6 +83,7 @@ jobs:
           --idle-seconds-before-scaledown "$AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN"
     - name: Upload Data to the Default Datastore
       run: |
+        ls -la
         az ml datastore upload -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -n $(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv) \
           -p data -u diabetes --overwrite true
