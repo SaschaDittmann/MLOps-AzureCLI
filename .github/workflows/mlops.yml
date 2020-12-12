@@ -143,6 +143,7 @@ jobs:
         name: environment
         path: ./metadata/diabetes-environment.json
   modelprofile:
+    # A model profile of a model is a resource requirement recommendation.
     runs-on: ubuntu-latest
     needs: [train, registerenvironment]
     name: Azure ML Model Profiling
