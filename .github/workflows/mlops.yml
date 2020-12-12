@@ -20,6 +20,10 @@ env:
   AZUREML_MODEL_NAME: diabetes_model
   AZUREML_MODEL_PROFILE_NAME: diabetes-profile
   AZUREML_SERVICE_NAME_STAGING: diabetes-service-aci
+  AZUREML_SERVICE_NAME_PRODUCTION: diabetes-service-aks
+  AZURE_KUBERNETES_SERVICE_CLUSTER_NAME: aks
+  AZURE_KUBERNETES_SERVICE_VMSIZE: Standard_B4ms
+  AZURE_KUBERNETES_SERVICE_AGENT_COUNT: 3
   AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
 jobs:
@@ -275,11 +279,101 @@ jobs:
     - name: Run Integration Tests
       run: | 
         scoreurl=$(az ml service show -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -n "$AZUREML_SERVICE_NAME_STAGING" --query scoringUri -o tsv)
-        pytest tests/integration/integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=integration_test --cov-report=xml --cov-report=html --scoreurl "$scoreurl"
-    - name: Publish Data Quality Check
+        pytest tests/integration/integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=integration_test --cov-report=xml --cov-report=html \
+          --scoreurl "$scoreurl"
+    - name: Publish Integration Tests (Staging)
       uses: EnricoMi/publish-unit-test-result-action@v1.6
       if: always()
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         files: junit/**/*.xml
         check_name: Integration Tests (Staging) Results
+  productiondeployment:
+    runs-on: ubuntu-latest
+    name: Deploy to Production (AKS)
+    needs: [train, registerenvironment, modelprofile, stagingintegrationtests]
+    container: 
+      image: mcr.microsoft.com/azure-cli:latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Download Metadata (From Training)
+      uses: actions/download-artifact@v2
+      with:
+        name: metadata-train
+        path: ./metadata/
+    - name: Download Environment Registration Results
+      uses: actions/download-artifact@v2
+      with:
+        name: environment
+        path: ./metadata/diabetes-environment.json
+    - name: Download Profiling Results
+      uses: actions/download-artifact@v2
+      with:
+        name: modelprofile
+        path: ./metadata/modelprofile.json
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
+    - name: Add Azure ML CLI Extension
+      run: |
+        az extension add -n azure-cli-ml
+    - name: Create Azure Kubernetes Service
+      run: |
+        az ml computetarget create aks -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -n "$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME" \
+          -s "$AZURE_KUBERNETES_SERVICE_VMSIZE" -a "$AZURE_KUBERNETES_SERVICE_AGENT_COUNT"
+    - name: Deploy to ML Service to AKS
+      run: |
+        az ml model deploy -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -n "$AZUREML_SERVICE_NAME_PRODUCTION" --overwrite \
+          -f ../metadata/model.json --dc aksDeploymentConfig.yml --es score.py \
+          -e $(jq -r '.name' ../metadata/diabetes-environment.json) \
+          --ev $(jq -r '.version' ../metadata/diabetes-environment.json) \
+          --pi ../metadata/modelprofile.json
+      working-directory: deployment
+  productionintegrationtests:
+    runs-on: ubuntu-latest
+    name: Run Integration Tests (Production)
+    needs: productiondeployment
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install Python Requirements
+      run: ./install_requirements.sh
+      working-directory: setup
+    - name: Install Azure CLI
+      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
+    - name: Add Azure ML CLI Extension
+      run: |
+        az extension add -n azure-cli-ml
+    - name: Run Integration Tests
+      run: | 
+        scoreurl=$(az ml service show -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -n "$AZUREML_SERVICE_NAME_PRODUCTION" --query scoringUri -o tsv)
+        scorekey=$(az ml service get-keys -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -n "$AZUREML_SERVICE_NAME_PRODUCTION" --query primaryKey -o tsv)
+        pytest tests/integration/integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=integration_test --cov-report=xml --cov-report=html \
+          --scoreurl "$scoreurl" --scorekey "$scorekey"
+    - name: Publish Integration Tests (Production)
+      uses: EnricoMi/publish-unit-test-result-action@v1.6
+      if: always()
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: junit/**/*.xml
+        check_name: Integration Tests (Production) Results
