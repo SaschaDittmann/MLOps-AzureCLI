@@ -19,6 +19,7 @@ env:
   AZUREML_EXPERIMENT_NAME: diabetes_sklearn
   AZUREML_MODEL_NAME: diabetes_model
   AZUREML_MODEL_PROFILE_NAME: diabetes-profile
+  AZUREML_SERVICE_NAME_STAGING: diabetes-service-aci
   AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
 jobs:
@@ -58,7 +59,6 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az config set extension.use_dynamic_install=yes_without_prompt
         az extension add -n azure-cli-ml
     - name: Create Azure ML Service Workspace
       run: |
@@ -130,7 +130,6 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az config set extension.use_dynamic_install=yes_without_prompt
         az extension add -n azure-cli-ml
     - name: Register Environment Definition
       run: |
@@ -181,7 +180,6 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az config set extension.use_dynamic_install=yes_without_prompt
         az extension add -n azure-cli-ml
     - name: Register Diabetes Test Samples
       run: |
@@ -203,3 +201,85 @@ jobs:
       with:
         name: modelprofile
         path: ./metadata/modelprofile.json
+  stagingdeployment:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging (ACI)
+    needs: [train, registerenvironment, modelprofile]
+    container: 
+      image: mcr.microsoft.com/azure-cli:latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Download Metadata (From Training)
+      uses: actions/download-artifact@v2
+      with:
+        name: metadata-train
+        path: ./metadata/
+    - name: Download Environment Registration Results
+      uses: actions/download-artifact@v2
+      with:
+        name: environment
+        path: ./metadata/diabetes-environment.json
+    - name: Download Profiling Results
+      uses: actions/download-artifact@v2
+      with:
+        name: modelprofile
+        path: ./metadata/modelprofile.json
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
+    - name: Add Azure ML CLI Extension
+      run: |
+        az extension add -n azure-cli-ml
+    - name: Deploy to ML Service to ACI
+      run: |
+        az ml model deploy -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -n "$AZUREML_SERVICE_NAME_STAGING" --overwrite \
+          -f ../metadata/model.json --dc aciDeploymentConfig.yml --es score.py \
+          -e $(jq -r '.name' ../metadata/diabetes-environment.json) \
+          --ev $(jq -r '.version' ../metadata/diabetes-environment.json) \
+          --pi ../metadata/modelprofile.json
+      working-directory: deployment
+  stagingintegrationtests:
+    runs-on: ubuntu-latest
+    name: Run Integration Tests (Staging)
+    needs: stagingdeployment
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install Python Requirements
+      run: ./install_requirements.sh
+      working-directory: setup
+    - name: Install Azure CLI
+      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
+    - name: Add Azure ML CLI Extension
+      run: |
+        az extension add -n azure-cli-ml
+    - name: Run Integration Tests
+      run: | 
+        scoreurl=$(az ml service show -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -n "$AZUREML_SERVICE_NAME_STAGING" --query scoringUri -o tsv)
+        pytest tests/integration/integration_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=integration_test --cov-report=xml --cov-report=html --scoreurl "$scoreurl"
+    - name: Publish Data Quality Check
+      uses: EnricoMi/publish-unit-test-result-action@v1.6
+      if: always()
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: junit/**/*.xml
+        check_name: Integration Tests (Staging) Results
