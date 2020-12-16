@@ -162,7 +162,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: environment
-        path: ./metadata/diabetes-environment.json
+        path: ./metadata/
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
@@ -226,12 +226,12 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: environment
-        path: ./metadata/diabetes-environment.json
+        path: ./metadata/
     - name: Download Profiling Results
       uses: actions/download-artifact@v2
       with:
         name: modelprofile
-        path: ./metadata/modelprofile.json
+        path: ./metadata/
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
