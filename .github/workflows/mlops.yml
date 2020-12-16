@@ -245,11 +245,15 @@ jobs:
         az extension add -n azure-cli-ml
     - name: Deploy to ML Service to ACI
       run: |
+        echo "Using the following parameters:"
+        echo "service name: $AZUREML_SERVICE_NAME_STAGING"
+        echo "environment name: $(jq -r '.name' ../metadata/diabetes-environment.json)"
+        echo "environment verison: $(jq -r '.version' ../metadata/diabetes-environment.json)"
         az ml model deploy -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -n "$AZUREML_SERVICE_NAME_STAGING" --overwrite \
           -f ../metadata/model.json --dc aciDeploymentConfig.yml --es score.py \
-          -e $(jq -r '.name' ../metadata/diabetes-environment.json) \
-          --ev $(jq -r '.version' ../metadata/diabetes-environment.json) \
+          -e "$(jq -r '.name' ../metadata/diabetes-environment.json)" \
+          --ev "$(jq -r '.version' ../metadata/diabetes-environment.json)" \
           --pi ../metadata/modelprofile.json
       working-directory: deployment
   stagingintegrationtests:
