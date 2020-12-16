@@ -31,7 +31,7 @@ stages:
   - job: Train
     displayName: 'Train, Evaluate & Register Model'
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     steps:
     - task: UsePythonVersion@0
       displayName: 'Use Python 3.6'
@@ -137,7 +137,7 @@ stages:
   - job: RegisterEnvironment
     displayName: 'Register Inference Environment Definition'
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     steps:
     - download: none
     - task: DownloadBuildArtifacts@0
@@ -177,7 +177,7 @@ stages:
     displayName: 'Azure ML Model Profiling'
     dependsOn: RegisterEnvironment
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     steps:
     - download: none
     - task: DownloadBuildArtifacts@0
@@ -243,7 +243,7 @@ stages:
   - deployment: DeployToACI
     displayName: 'Deploy to Azure Container Instance'
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     # creates an environment if it doesn’t exist
     environment: 'diabetes-staging'
     strategy:
@@ -297,7 +297,7 @@ stages:
     displayName: 'Run Integration Tests'
     dependsOn: DeployToACI
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     steps:
     - task: UsePythonVersion@0
       displayName: 'Use Python 3.6'
@@ -339,7 +339,7 @@ stages:
   - deployment: DeployToAKS
     displayName: 'Deploy to Azure Kubernetes Service'
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     # creates an environment if it doesn’t exist
     environment: 'diabetes-production'
     strategy:
@@ -402,7 +402,7 @@ stages:
     displayName: 'Run Integration Tests'
     dependsOn: DeployToAKS
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: 'ubuntu-18.04'
     steps:
     - task: UsePythonVersion@0
       displayName: 'Use Python 3.6'
