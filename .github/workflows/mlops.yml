@@ -28,7 +28,7 @@ env:
 
 jobs:
   train:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Train, Evaluate & Register Model
     steps:
     - name: Checkout
@@ -117,7 +117,7 @@ jobs:
         name: metadata-train
         path: ./metadata/
   registerenvironment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Register Inference Environment Definition
     container: 
       image: mcr.microsoft.com/azure-cli:latest
@@ -147,7 +147,7 @@ jobs:
         path: ./metadata/diabetes-environment.json
   modelprofile:
     # A model profile of a model is a resource requirement recommendation.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     needs: [train, registerenvironment]
     name: Azure ML Model Profiling
     steps:
@@ -206,7 +206,7 @@ jobs:
         name: modelprofile
         path: ./metadata/modelprofile.json
   stagingdeployment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Deploy to Staging (ACI)
     needs: [train, registerenvironment, modelprofile]
     container: 
@@ -250,7 +250,7 @@ jobs:
           --pi ../metadata/modelprofile.json
       working-directory: deployment
   stagingintegrationtests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Run Integration Tests (Staging)
     needs: stagingdeployment
     steps:
@@ -289,7 +289,7 @@ jobs:
         files: junit/**/*.xml
         check_name: Integration Tests (Staging) Results
   productiondeployment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Deploy to Production (AKS)
     needs: [train, registerenvironment, modelprofile, stagingintegrationtests]
     container: 
@@ -341,7 +341,7 @@ jobs:
           --pi ../metadata/modelprofile.json
       working-directory: deployment
   productionintegrationtests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Run Integration Tests (Production)
     needs: productiondeployment
     steps:
