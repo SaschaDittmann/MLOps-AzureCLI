@@ -6,7 +6,7 @@ import json
 import subprocess
 
 from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, roc_auc_score
 from sklearn.model_selection import train_test_split
 from joblib import dump
 from typing import Tuple, List
@@ -53,6 +53,10 @@ preds = reg.predict(data["test"]["X"])
 mse = mean_squared_error(preds, data["test"]["y"])
 print("Mean Squared Error:", mse)
 run.log("mse", mse)
+
+auc = roc_auc_score(data["test"]["y"], preds)
+print("Area under the ROC curve", auc)
+run.log("auc", auc)
 
 # Save model as part of the run history
 print("Exporting the model as pickle file...")
