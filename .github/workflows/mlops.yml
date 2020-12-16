@@ -194,7 +194,7 @@ jobs:
     - name: Create Azure ML Model Profile
       run: |
         # *** Workaround until Profiling Bug is solved ***
-        echo '{"cpu": 3.5, "memoryInGB": 0.5}' > ./metadata/modelprofile.json
+        echo '{"cpu": 0.5, "memoryInGB": 0.5}' > ./metadata/modelprofile.json
         ls -la ./metadata/
         ls -la ./deployment/
         # ************************************************
