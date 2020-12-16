@@ -193,16 +193,13 @@ jobs:
           -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json
     - name: Create Azure ML Model Profile
       run: |
-        # *** Workaround until Profiling Bug is solved ***
-        echo '{"cpu": 3.5, "memoryInGB": 0.5}' > metadata/modelprofile.json
-        # ************************************************
-        #az ml model profile -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-        #  -n "$AZUREML_MODEL_PROFILE_NAME-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" \
-        #  -f metadata/model.json --es deployment/score.py \
-        #  -e $(jq -r '.name' metadata/diabetes-environment.json) \
-        #  --ev $(jq -r '.version' metadata/diabetes-environment.json) \
-        #  --idi $(jq -r '.registration.id' metadata/diabetes-test-samples.json) \
-        #  -t metadata/modelprofile.json
+        az ml model profile -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+          -n "$AZUREML_MODEL_PROFILE_NAME-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)" \
+          -f metadata/model.json --es deployment/score.py \
+          -e $(jq -r '.name' metadata/diabetes-environment.json) \
+          --ev $(jq -r '.version' metadata/diabetes-environment.json) \
+          --idi $(jq -r '.registration.id' metadata/diabetes-test-samples.json) \
+          -t metadata/modelprofile.json
     - name: Store Profiling Results
       uses: actions/upload-artifact@v2
       with:
@@ -245,8 +242,6 @@ jobs:
         az extension add -n azure-cli-ml
     - name: Deploy to ML Service to ACI
       run: |
-        ls -la ../
-        ls -la ../metadata
         echo "Using the following parameters:"
         echo "service name: $AZUREML_SERVICE_NAME_STAGING"
         echo "environment name: $(jq -r '.name' ../metadata/diabetes-environment.json)"
@@ -315,12 +310,12 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: environment
-        path: ./metadata/diabetes-environment.json
+        path: ./metadata/
     - name: Download Profiling Results
       uses: actions/download-artifact@v2
       with:
         name: modelprofile
-        path: ./metadata/modelprofile.json
+        path: ./metadata/
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -342,6 +337,10 @@ jobs:
         || echo "compute target already exists, skipping..."
     - name: Deploy to ML Service to AKS
       run: |
+        echo "Using the following parameters:"
+        echo "service name: $AZUREML_SERVICE_NAME_PRODUCTION"
+        echo "environment name: $(jq -r '.name' ../metadata/diabetes-environment.json)"
+        echo "environment verison: $(jq -r '.version' ../metadata/diabetes-environment.json)"
         az ml model deploy -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -n "$AZUREML_SERVICE_NAME_PRODUCTION" --overwrite \
           -f ../metadata/model.json --dc aksDeploymentConfig.yml --es score.py \
