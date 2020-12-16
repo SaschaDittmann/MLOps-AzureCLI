@@ -356,7 +356,7 @@ jobs:
           -f ../metadata/model.json --dc aksDeploymentConfig.yml --es score.py \
           -e $(jq -r '.name' ../metadata/diabetes-environment.json) \
           --ev $(jq -r '.version' ../metadata/diabetes-environment.json) \
-          --pi ../metadata/modelprofile.json
+          --pi ../metadata/modelprofile.json --ct "$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME"
       working-directory: deployment
   productionintegrationtests:
     runs-on: ubuntu-18.04
