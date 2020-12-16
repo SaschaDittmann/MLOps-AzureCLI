@@ -245,6 +245,8 @@ jobs:
         az extension add -n azure-cli-ml
     - name: Deploy to ML Service to ACI
       run: |
+        ls -la ../
+        ls -la ../metadata
         echo "Using the following parameters:"
         echo "service name: $AZUREML_SERVICE_NAME_STAGING"
         echo "environment name: $(jq -r '.name' ../metadata/diabetes-environment.json)"
