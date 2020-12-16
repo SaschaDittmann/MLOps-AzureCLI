@@ -386,7 +386,9 @@ stages:
             inputs:
               azureSubscription: 'MyAzureSubscription'
               scriptLocation: 'inlineScript'
-              inlineScript: 'az ml computetarget create aks -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(aks.clusterName) -s $(aks.vmSize) -a $(aks.agentCount)'
+              inlineScript: |
+                existingaks=$(az ml computetarget list -g $(azureml.resourceGroup) -w $(azureml.workspaceName) --query "[?name=='$(aks.clusterName)'].name" -o tsv)
+                [[ -z "$existingaks" ]] && az ml computetarget create aks -g $(azureml.resourceGroup) -w $(azureml.workspaceName) -n $(aks.clusterName) -s $(aks.vmSize) -a $(aks.agentCount) || echo "compute target already exists, skipping..."
               workingDirectory: '$(System.ArtifactsDirectory)/drop/deployment'
           - task: AzureCLI@1
             displayName: 'Deploy to ML Service to AKS'
