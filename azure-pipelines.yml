@@ -200,12 +200,12 @@ stages:
         versionSpec: '3.6'
         addToPath: true
         architecture: 'x64'
-    - task: AzureCLI@1
-      displayName: 'Install Azure ML Model Profiling Requirements'
+    - task: Bash@3
+      displayName: 'Install Python Requirements'
       inputs:
-        azureSubscription: 'MyAzureSubscription'
-        scriptLocation: 'inlineScript'
-        inlineScript: 'pip install --upgrade azureml-sdk azure-cli'
+        targetType: filePath
+        filePath: 'setup/install_requirements.sh'
+        workingDirectory: 'setup'
     - task: AzureCLI@1
       displayName: 'Add Azure ML CLI Extension'
       inputs:
