@@ -325,9 +325,12 @@ jobs:
         az extension add -n azure-cli-ml
     - name: Create Azure Kubernetes Service
       run: |
-        az ml computetarget create aks -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+        existingaks=$(az ml computetarget list -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query "[?name=='$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME'].name" -o tsv)
+        [[ -z "$existingaks" ]] \
+        && az ml computetarget create aks -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
           -n "$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME" \
-          -s "$AZURE_KUBERNETES_SERVICE_VMSIZE" -a "$AZURE_KUBERNETES_SERVICE_AGENT_COUNT"
+          -s "$AZURE_KUBERNETES_SERVICE_VMSIZE" -a "$AZURE_KUBERNETES_SERVICE_AGENT_COUNT" \
+        || echo "compute target already exists, skipping..."
     - name: Deploy to ML Service to AKS
       run: |
         az ml model deploy -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
