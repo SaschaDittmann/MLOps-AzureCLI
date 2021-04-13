@@ -1,6 +1,6 @@
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-[![](https://ga4gh.azurewebsites.net/api?repo=MLOps-AzureCLI)](https://github.com/SaschaDittmann/gaforgithub)
+[![](https://ga4gh.datainsights.cloud/api?repo=MLOps-AzureCLI)](https://github.com/SaschaDittmann/gaforgithub)
 
 # MLOps on Azure
 This repository contains examples of how to implement [MLOps](https://en.wikipedia.org/wiki/MLOps) using [Azure ML Services](https://azure.microsoft.com/en-us/services/machine-learning-service/) and [Azure DevOps](https://azure.microsoft.com/en-us/services/devops/).
