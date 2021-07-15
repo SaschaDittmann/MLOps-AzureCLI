@@ -7,7 +7,7 @@ on:
       - dev
 
 env:
-  PYTHON_VERSION: 3.6
+  PYTHON_VERSION: 3.7
   RESOURCE_GROUP: mlops-demo
   REGION: westeurope
   AZUREML_WORKSPACE_NAME: mlops-mlwrksp
