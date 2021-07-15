@@ -223,6 +223,7 @@ jobs:
           -e $(jq -r '.name' ./metadata/diabetes-environment.json) \
           --ev $(jq -r '.version' ./metadata/diabetes-environment.json) \
           --idi $(jq -r '.registration.id' ./metadata/diabetes-test-samples.json) \
+          --cc 2 --gb 2 \
           -t ./metadata/modelprofile.json
     - name: Store Profiling Results
       uses: actions/upload-artifact@v2
