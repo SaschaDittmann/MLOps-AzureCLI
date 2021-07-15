@@ -27,30 +27,10 @@ env:
   AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
 jobs:
-  train:
+  setup:
     runs-on: ubuntu-18.04
-    name: Train, Evaluate & Register Model
+    name: Setup Azure ML Prerequisites
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    - name: Install Python Requirements
-      run: ./install_requirements.sh
-      working-directory: setup
-    - name: Data Quality Check
-      run: pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html
-    - name: Publish Data Quality Check
-      uses: EnricoMi/publish-unit-test-result-action@v1.6
-      if: always()
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        files: junit/**/*.xml
-        check_name: Data Quality Check Results
-    - name: Create Metadata and Models Folder
-      run: mkdir -p metadata && mkdir -p models
     - name: Install Azure CLI
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
     - name: Azure Login
@@ -74,6 +54,31 @@ jobs:
           -n "$AZUREML_COMPUTE_CLUSTER_NAME" -s "$AZUREML_COMPUTE_VMSIZE" \
           --min-nodes "$AZUREML_COMPUTE_MIN_NODES" --max-nodes "$AZUREML_COMPUTE_MAX_NODES" \
           --idle-seconds-before-scaledown "$AZUREML_COMPUTE_IDLE_SECONDS_BEFORE_SCALEDOWN"
+  train:
+    runs-on: ubuntu-18.04
+    name: Train, Evaluate & Register Model
+    needs: [setup]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install Python Requirements
+      run: ./install_requirements.sh
+      working-directory: setup
+    - name: Data Quality Check
+      run: pytest tests/unit/data_test.py --doctest-modules --junitxml=junit/test-results.xml --cov=data_test --cov-report=xml --cov-report=html
+    - name: Publish Data Quality Check
+      uses: EnricoMi/publish-unit-test-result-action@v1.6
+      if: always()
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: junit/**/*.xml
+        check_name: Data Quality Check Results
+    - name: Create Metadata and Models Folder
+      run: mkdir -p metadata && mkdir -p models
     - name: Upload Data to the Default Datastore
       run: |
         az ml datastore upload -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
@@ -119,6 +124,7 @@ jobs:
   registerenvironment:
     runs-on: ubuntu-18.04
     name: Register Inference Environment Definition
+    needs: [setup]
     container: 
       image: mcr.microsoft.com/azure-cli:latest
     steps:
