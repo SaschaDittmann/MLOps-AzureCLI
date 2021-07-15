@@ -102,7 +102,7 @@ jobs:
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json
+          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json --skip-validation
     - name: Train Model
       run: |
         az ml run submit-script -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
@@ -209,7 +209,7 @@ jobs:
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-test-samples-specs.json > metadata/diabetes-test-samples-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json
+          -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json --skip-validation
     - name: Create Azure ML Model Profile
       run: |
         echo "Using the following parameters:"
