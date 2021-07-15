@@ -65,11 +65,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-    - name: Install Azure CLI
-      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-    - name: Add Azure ML CLI Extension
-      run: |
-        az extension add -n azure-cli-ml
     - name: Install Python Requirements
       run: ./install_requirements.sh
       working-directory: setup
@@ -84,6 +79,11 @@ jobs:
         check_name: Data Quality Check Results
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
+    - name: Install Azure CLI
+      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+    - name: Add Azure ML CLI Extension
+      run: |
+        az extension add -n azure-cli-ml
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -102,7 +102,7 @@ jobs:
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-dataset-specs.json > metadata/diabetes-dataset-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json --skip-validation
+          -f metadata/diabetes-dataset-specs.json -t metadata/diabetes-dataset.json
     - name: Train Model
       run: |
         az ml run submit-script -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
@@ -209,7 +209,7 @@ jobs:
         defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
         sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-test-samples-specs.json > metadata/diabetes-test-samples-specs.json
         az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json --skip-validation
+          -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json
     - name: Create Azure ML Model Profile
       run: |
         echo "Using the following parameters:"
