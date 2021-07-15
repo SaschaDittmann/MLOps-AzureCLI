@@ -63,14 +63,6 @@ jobs:
       uses: actions/checkout@v2
     - name: Install Azure CLI
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-    - name: Azure Login
-      run: |
-        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
-        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
-        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
-        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
-        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
-        az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
         az extension add -n azure-cli-ml
@@ -92,6 +84,14 @@ jobs:
         check_name: Data Quality Check Results
     - name: Create Metadata and Models Folder
       run: mkdir -p metadata && mkdir -p models
+    - name: Azure Login
+      run: |
+        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+        az account set -s "$subscriptionId"
     - name: Upload Data to the Default Datastore
       run: |
         az ml datastore upload -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
