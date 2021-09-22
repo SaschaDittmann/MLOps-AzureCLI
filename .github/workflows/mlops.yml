@@ -8,7 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: 3.6
-  RESOURCE_GROUP: mlops-demo
+  RESOURCE_GROUP: mlops-demos
   REGION: westeurope
   AZUREML_WORKSPACE_NAME: mlops-mlwrksp
   AZUREML_COMPUTE_CLUSTER_NAME: cpu-cluster
