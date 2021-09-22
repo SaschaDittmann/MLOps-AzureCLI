@@ -164,76 +164,77 @@ jobs:
       with:
         name: environment
         path: ./metadata/diabetes-environment.json
-  modelprofile:
-    # A model profile of a model is a resource requirement recommendation.
-    runs-on: ubuntu-18.04
-    needs: [train, registerenvironment]
-    name: Azure ML Model Profiling
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Download Metadata (From Training)
-      uses: actions/download-artifact@v2
-      with:
-        name: metadata-train
-        path: ./metadata/
-    - name: Download Environment Registration Results
-      uses: actions/download-artifact@v2
-      with:
-        name: environment
-        path: ./metadata/
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    - name: Install Python Requirements
-      run: ./install_requirements.sh
-      working-directory: setup
-    - name: Create Metadata Folder
-      run: mkdir -p metadata
-    - name: Install Azure CLI
-      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-    - name: Azure Login
-      run: |
-        clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
-        clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
-        tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
-        subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
-        az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
-        az account set -s "$subscriptionId"
-    - name: Add Azure ML CLI Extension
-      run: |
-        az extension add -n azure-cli-ml
-    - name: Register Diabetes Test Samples
-      run: |
-        defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
-        sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-test-samples-specs.json > metadata/diabetes-test-samples-specs.json
-        az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json
-    - name: Create Azure ML Model Profile
-      run: |
-        echo "Using the following parameters:"
-        profilename="$AZUREML_MODEL_PROFILE_NAME-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)"
-        echo "profile name: $profilename"
-        echo "environment name: $(jq -r '.name' ./metadata/diabetes-environment.json)"
-        echo "environment verison: $(jq -r '.version' ./metadata/diabetes-environment.json)"
-        az ml model profile -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
-          -n "$profilename" \
-          -f ./metadata/model.json --es ./deployment/score.py \
-          -e $(jq -r '.name' ./metadata/diabetes-environment.json) \
-          --ev $(jq -r '.version' ./metadata/diabetes-environment.json) \
-          --idi $(jq -r '.registration.id' ./metadata/diabetes-test-samples.json) \
-          --cc 2 --gb 2 \
-          -t ./metadata/modelprofile.json
-    - name: Store Profiling Results
-      uses: actions/upload-artifact@v2
-      with:
-        name: modelprofile
-        path: ./metadata/modelprofile.json
+  #modelprofile:
+  #  # A model profile of a model is a resource requirement recommendation.
+  #  runs-on: ubuntu-18.04
+  #  needs: [train, registerenvironment]
+  #  name: Azure ML Model Profiling
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v2
+  #  - name: Download Metadata (From Training)
+  #    uses: actions/download-artifact@v2
+  #    with:
+  #      name: metadata-train
+  #      path: ./metadata/
+  #  - name: Download Environment Registration Results
+  #    uses: actions/download-artifact@v2
+  #    with:
+  #      name: environment
+  #      path: ./metadata/
+  #  - name: Setup Python
+  #    uses: actions/setup-python@v2
+  #    with:
+  #      python-version: ${{ env.PYTHON_VERSION }}
+  #  - name: Install Python Requirements
+  #    run: ./install_requirements.sh
+  #    working-directory: setup
+  #  - name: Create Metadata Folder
+  #    run: mkdir -p metadata
+  #  - name: Install Azure CLI
+  #    run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+  #  - name: Azure Login
+  #    run: |
+  #      clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
+  #      clientSecret="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientSecret')"
+  #      tenantId="$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')"
+  #      subscriptionId="$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')"
+  #      az login --service-principal -u "$clientId" -p "$clientSecret" --tenant "$tenantId"
+  #      az account set -s "$subscriptionId"
+  #  - name: Add Azure ML CLI Extension
+  #    run: |
+  #      az extension add -n azure-cli-ml
+  #  - name: Register Diabetes Test Samples
+  #    run: |
+  #      defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
+  #      sed "s/<default-datastore>/$defaultDatastore/g" datasets/diabetes-test-samples-specs.json > metadata/diabetes-test-samples-specs.json
+  #      az ml dataset register -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+  #        -f metadata/diabetes-test-samples-specs.json -t metadata/diabetes-test-samples.json
+  #  - name: Create Azure ML Model Profile
+  #    run: |
+  #      echo "Using the following parameters:"
+  #      profilename="$AZUREML_MODEL_PROFILE_NAME-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)"
+  #      echo "profile name: $profilename"
+  #      echo "environment name: $(jq -r '.name' ./metadata/diabetes-environment.json)"
+  #      echo "environment verison: $(jq -r '.version' ./metadata/diabetes-environment.json)"
+  #      az ml model profile -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
+  #        -n "$profilename" \
+  #        -f ./metadata/model.json --es ./deployment/score.py \
+  #        -e $(jq -r '.name' ./metadata/diabetes-environment.json) \
+  #        --ev $(jq -r '.version' ./metadata/diabetes-environment.json) \
+  #        --idi $(jq -r '.registration.id' ./metadata/diabetes-test-samples.json) \
+  #        --cc 2 --gb 2 \
+  #        -t ./metadata/modelprofile.json
+  #  - name: Store Profiling Results
+  #    uses: actions/upload-artifact@v2
+  #    with:
+  #      name: modelprofile
+  #      path: ./metadata/modelprofile.json
   stagingdeployment:
     runs-on: ubuntu-18.04
     name: Deploy to Staging (ACI)
-    needs: [train, registerenvironment, modelprofile]
+    # needs: [train, registerenvironment, modelprofile]
+    needs: [train, registerenvironment]
     container: 
       image: mcr.microsoft.com/azure-cli:latest
     steps:
@@ -249,11 +250,11 @@ jobs:
       with:
         name: environment
         path: ./metadata/
-    - name: Download Profiling Results
-      uses: actions/download-artifact@v2
-      with:
-        name: modelprofile
-        path: ./metadata/
+    #- name: Download Profiling Results
+    #  uses: actions/download-artifact@v2
+    #  with:
+    #    name: modelprofile
+    #    path: ./metadata/
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -275,8 +276,8 @@ jobs:
           -n "$AZUREML_SERVICE_NAME_STAGING" --overwrite \
           -f ../metadata/model.json --dc aciDeploymentConfig.yml --es score.py \
           -e "$(jq -r '.name' ../metadata/diabetes-environment.json)" \
-          --ev "$(jq -r '.version' ../metadata/diabetes-environment.json)" \
-          --pi ../metadata/modelprofile.json
+          --ev "$(jq -r '.version' ../metadata/diabetes-environment.json)" #\
+        # --pi ../metadata/modelprofile.json
       working-directory: deployment
   stagingintegrationtests:
     runs-on: ubuntu-18.04
@@ -320,7 +321,8 @@ jobs:
   productiondeployment:
     runs-on: ubuntu-18.04
     name: Deploy to Production (AKS)
-    needs: [train, registerenvironment, modelprofile, stagingintegrationtests]
+    # needs: [train, registerenvironment, modelprofile, stagingintegrationtests]
+    needs: [train, registerenvironment, stagingintegrationtests]
     container: 
       image: mcr.microsoft.com/azure-cli:latest
     steps:
@@ -336,11 +338,11 @@ jobs:
       with:
         name: environment
         path: ./metadata/
-    - name: Download Profiling Results
-      uses: actions/download-artifact@v2
-      with:
-        name: modelprofile
-        path: ./metadata/
+    #- name: Download Profiling Results
+    #  uses: actions/download-artifact@v2
+    #  with:
+    #    name: modelprofile
+    #    path: ./metadata/
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -371,7 +373,8 @@ jobs:
           -f ../metadata/model.json --dc aksDeploymentConfig.yml --es score.py \
           -e $(jq -r '.name' ../metadata/diabetes-environment.json) \
           --ev $(jq -r '.version' ../metadata/diabetes-environment.json) \
-          --pi ../metadata/modelprofile.json --ct "$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME"
+          --ct "$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME"
+        # --pi ../metadata/modelprofile.json 
       working-directory: deployment
   productionintegrationtests:
     runs-on: ubuntu-18.04
