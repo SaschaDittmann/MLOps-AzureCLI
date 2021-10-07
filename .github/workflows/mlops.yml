@@ -43,7 +43,7 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Create Azure ML Service Workspace
       run: |
         az ml workspace create -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" \
@@ -83,7 +83,7 @@ jobs:
       run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Azure Login
       run: |
         clientId="$(echo "$AZURE_CREDENTIALS" | jq -r '.clientId')"
@@ -153,7 +153,7 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Register Environment Definition
       run: |
         mkdir -p metadata
@@ -203,7 +203,7 @@ jobs:
   #      az account set -s "$subscriptionId"
   #  - name: Add Azure ML CLI Extension
   #    run: |
-  #      az extension add -n ml -y
+  #      az extension add -n azure-cli-ml
   #  - name: Register Diabetes Test Samples
   #    run: |
   #      defaultDatastore="$(az ml datastore show-default -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query name -o tsv)"
@@ -265,7 +265,7 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Deploy to ML Service to ACI
       run: |
         echo "Using the following parameters:"
@@ -305,7 +305,7 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Run Integration Tests
       run: | 
         scoreurl=$(az ml service show -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -n "$AZUREML_SERVICE_NAME_STAGING" --query scoringUri -o tsv)
@@ -353,7 +353,7 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Create Azure Kubernetes Service
       run: |
         existingaks=$(az ml computetarget list -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" --query "[?name=='$AZURE_KUBERNETES_SERVICE_CLUSTER_NAME'].name" -o tsv)
@@ -402,7 +402,7 @@ jobs:
         az account set -s "$subscriptionId"
     - name: Add Azure ML CLI Extension
       run: |
-        az extension add -n ml -y
+        az extension add -n azure-cli-ml
     - name: Run Integration Tests
       run: | 
         scoreurl=$(az ml service show -g "$RESOURCE_GROUP" -w "$AZUREML_WORKSPACE_NAME" -n "$AZUREML_SERVICE_NAME_PRODUCTION" --query scoringUri -o tsv)
